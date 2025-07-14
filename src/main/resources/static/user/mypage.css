@@ -1,0 +1,578 @@
+body {
+    font-family: 'Pretendard', 'Noto Sans KR', Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+.mypage-wrapper {
+    display: flex;
+    max-width: 1100px;
+    margin: 40px auto;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+    overflow: hidden;
+}
+.mypage-sidebar {
+    width: 220px;
+    background: #222;
+    color: #fff;
+    padding: 40px 0 0 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.sidebar-title {
+    font-size: 1.3em;
+    font-weight: bold;
+    margin-bottom: 32px;
+}
+.sidebar-menu {
+    list-style: none;
+    padding: 0;
+    width: 100%;
+}
+.sidebar-menu li {
+    padding: 18px 0 18px 32px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.sidebar-menu li.active, .sidebar-menu li:hover {
+    background: #111;
+}
+.mypage-main {
+    flex: 1;
+    padding: 48px 56px 56px 56px;
+}
+
+.order-list-section h2 {
+    font-size: 1.15em;
+    margin-bottom: 18px;
+}
+.order-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+.order-row {
+    background: #fafafa;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 20px 24px 12px 24px;
+    position: relative;
+}
+.order-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+}
+.order-date, .order-number, .order-total {
+    font-size: 1em;
+    color: #333;
+}
+.order-toggle-btn {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    color: #111;
+    cursor: pointer;
+    transition: transform 0.2s;
+    margin-left: 12px;
+    transform: rotate(0deg);
+}
+.order-row.open .order-toggle-btn {
+    transform: rotate(180deg);
+}
+.order-detail {
+    margin-top: 18px;
+    display: none;
+    border-top: 1px solid #eee;
+    padding-top: 16px;
+}
+.order-row.open .order-detail {
+    display: block;
+}
+.order-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 12px;
+}
+.order-detail-item .book-title {
+    font-weight: bold;
+    color: #222;
+}
+.order-detail-item .book-author {
+    color: #666;
+    font-size: 0.98em;
+}
+.order-detail-item .book-price {
+    color: #333;
+    font-size: 1em;
+}
+.review-btn {
+    margin-left: auto;
+    padding: 8px 18px;
+    background: #222;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.98em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.review-btn:hover {
+    background: #111;
+}
+/* 마이페이지 회원정보수정 폼 스타일 (register.css 참고) */
+.mypage-page-title {
+    font-size: 2rem;
+    font-weight: 700;
+    text-align: left;
+    margin: 40px 0 0 0;
+    padding-left: 8px;
+}   
+.mypage-tab-nav {
+    display: flex;
+    justify-content: flex-start;
+    gap: 24px;
+    margin: 0;
+    padding-left: 8px;
+}
+.mypage-tab-btn {
+    background: none;
+    border: none;
+    font-size: 1.08rem;
+    font-weight: 500;
+    color: #888;
+    padding: 0 8px 6px 8px;
+    cursor: pointer;
+    border-bottom: 2.5px solid transparent;
+    transition: color 0.15s, border 0.15s;
+    letter-spacing: -0.5px;
+}
+.mypage-tab-btn.active {
+    color: #222;
+    border-bottom: 2.5px solid #222;
+}
+.mypage-tab-underline {
+    width: 100%;
+    height: 1.5px;
+    background: #eee;
+    margin: 0 0 32px 0;
+}
+.mypage-tab-content {
+    margin: 0 0 40px 0;
+    background: none;
+}
+
+/* 회원정보 수정 탭만 중앙 정렬 및 폭 제한 */
+.tab-edit {
+    max-width: 600px;
+    margin: 0 auto 40px auto;
+}
+
+/* 주문내역 조회 탭은 전체 폭 사용 */
+.tab-orders {
+    width: 100%;
+}
+.form-group {
+    margin-bottom: 18px;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 7px;
+    font-weight: 500;
+    font-size: 1.08rem;
+    color: #222;
+}
+.input-row,
+.birth-selects,
+.address-row,
+.phone-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+}
+.input-row input[type="text"],
+.input-row input[type="password"],
+.input-row select {
+    flex: 1 1 auto;
+    height: 40px;
+    min-width: 0;
+}
+.input-row .btn-gray,
+.input-row .btn-black {
+    height: 40px;
+    min-width: 80px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 0;
+    box-sizing: border-box;
+}
+.email-row select {
+    min-width: 120px;
+    height: 40px;
+}
+.address-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+#userAddress {
+    flex: 3 1 0%;
+    min-width: 0;
+    height: 40px;
+}
+#searchAddress {
+    margin-top: 0;
+    padding: 0 16px;
+    min-width: 80px;
+    max-width: 115px;
+    flex: 1 1 0%;
+    margin-left: 0;
+    box-sizing: border-box;
+}
+#userAddressDetail {
+    margin-top: 10px;
+}
+input[type="text"],
+input[type="password"],
+select {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+input[type="text"]:focus,
+input[type="password"]:focus,
+select:focus {
+    border-color: #111;
+    outline: none;
+}
+#userPhone1, #userPhone2, #userPhone3 {
+    width: 60px;
+}
+#userEmailId {
+    width: 100px;
+}
+#userEmailDomain {
+    width: 120px;
+}
+.btn-black {
+    height: 40px;
+    margin-top: 0 !important;
+    background: #111;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    font-size: 1.0rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    width: 100%;
+}
+.btn-black:disabled,
+.btn-gray:disabled {
+    background: #bbb !important;
+    color: #fff !important;
+    cursor: not-allowed;
+}
+.btn-black:hover:not(:disabled) {
+    background: #333;
+}
+.btn-gray {
+    background: #888;
+    color: #fff;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-gray:hover:not(:disabled) {
+    background: #555;
+}
+.btn-red {
+    background: #dc3545;
+    color: #fff;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-red:hover:not(:disabled) {
+    background: #c82333;
+}
+.btn-red:disabled {
+    background: #bbb !important;
+    color: #fff !important;
+    cursor: not-allowed;
+}
+input[readonly], input[disabled] {
+    background: #f5f5f5;
+}
+.input-guide {
+    font-size: 0.95em;
+    color: #888;
+    margin-top: 2px;
+    margin-left: 2px;
+}
+.pw-mismatch {
+    color: #e53935;
+    font-size: 0.97em;
+    margin-top: 2px;
+    margin-left: 2px;
+    display: none;
+}
+.pw-match {
+    color: #1976d2;
+    font-size: 0.97em;
+    margin-top: 2px;
+    margin-left: 2px;
+    display: none;
+}
+.pw-invalid {
+    color: #e53935;
+    font-size: 0.97em;
+    margin-top: 2px;
+    margin-left: 2px;
+    display: none;
+}
+.pw-valid {
+    color: #1976d2;
+    font-size: 0.97em;
+    margin-top: 2px;
+    margin-left: 2px;
+    display: none;
+}
+.required {
+    color: #e53935;
+    font-size: 1em;
+    margin-left: 2px;
+}
+.pw-toggle {
+    cursor: pointer;
+    font-size: 1.3em;
+    margin-left: 4px;
+    user-select: none;
+}
+#editBtn:disabled {
+    background: #bbb;
+    color: #fff;
+    cursor: not-allowed;
+}
+
+/* 탭 패널 숨김 처리 */
+.tab-panel { 
+    display: none; 
+}
+.tab-panel.active { 
+    display: block; 
+}
+
+.order-list { margin-top: 40px; }
+.order-row { background: #fafafa; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 20px 24px 12px 24px; position: relative; margin-bottom: 18px; }
+.order-summary { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.order-date, .order-number, .order-total { font-size: 1em; color: #333; }
+.order-toggle-btn { background: none; border: none; font-size: 1.5em; color: #111; cursor: pointer; transition: transform 0.2s; margin-left: 12px; transform: rotate(0deg); }
+.order-row.open .order-toggle-btn { transform: rotate(180deg); }
+.order-detail { margin-top: 18px; display: none; border-top: 1px solid #eee; padding-top: 16px; }
+.order-row.open .order-detail { display: block; }
+.order-detail-item { display: flex; align-items: center; gap: 24px; margin-bottom: 12px; }
+.order-detail-item .book-title { font-weight: bold; color: #222; }
+.order-detail-item .book-author { color: #666; font-size: 0.98em; }
+.order-detail-item .book-price { color: #333; font-size: 1em; }
+.review-btn { margin-left: auto; padding: 8px 18px; background: #222; color: #fff; border: none; border-radius: 6px; font-size: 0.98em; font-weight: bold; cursor: pointer; transition: background 0.15s; }
+.review-btn:hover { background: #111; }
+.mypage-title {
+  font-size: 1.4em; /* h3 수준 */
+  font-weight: bold;
+  margin-bottom: 18px;
+  padding-left: 8px;
+  margin-top: 18px; /* 상단 여백 추가 */
+}
+
+/* 중복확인/가입확인 버튼 영역별로 비례 조정 */
+#checkJoinable.duplicate-check-btn {
+  padding-left: 16px;
+  padding-right: 16px;
+  width: 375px;
+  height: 40px;
+  white-space: nowrap;
+}
+#checkNickname.duplicate-check-btn {
+  background: #888;
+  color: #fff;
+  width: 135px;
+  height: 40px;
+}
+#checkEmail.duplicate-check-btn {
+  background: #888;
+  color: #fff;
+  width: 115px;
+  height: 40px;
+}
+.duplicate-check-btn {
+  white-space: nowrap;
+  padding: 0;
+  font-size: 1em;
+  background: #888;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+  box-sizing: border-box;
+}
+.duplicate-check-btn:hover {
+  background: #888;
+}
+.check-joinable-btn,
+.check-nickname-btn,
+.check-email-btn {
+  height: 40px;
+  padding: 0;
+  font-size: 1em;
+  background: #f5f5f5;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  color: #222;
+  cursor: pointer;
+  transition: background 0.2s;
+  box-sizing: border-box;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* width는 지정하지 않음 */
+}
+.check-joinable-btn:hover,
+.check-nickname-btn:hover,
+.check-email-btn:hover {
+  background: #e0e0e0;
+}
+.check-joinable-btn {
+  /* 가입확인 버튼 전용 스타일: 여기서 width, margin 등 세부조정 가능 */
+}
+.check-nickname-btn {
+  /* 닉네임 중복확인 버튼 전용 스타일 */
+}
+.check-email-btn {
+  /* 이메일 중복확인 버튼 전용 스타일 */
+}
+.order-box {
+  width: 100%;
+  box-sizing: border-box;
+  background: #eee;
+  margin-bottom: 10px;
+  border-radius: 6px;
+}
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 18px 20px 18px 20px;
+  border-radius: 6px;
+  background: #eee;
+}
+.order-detail-table-wrap {
+  padding: 0 0 20px 0;
+  background: #fff;
+  border-radius: 0 0 6px 6px;
+  display: none;
+  border-top: 1px solid #ddd;
+}
+.order-detail-table {
+  width: 100%;
+  margin-top: 0;
+  margin-bottom: 0;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+.order-detail-table th {
+  background: #f8f9fa;
+  color: #495057;
+  font-weight: 600;
+  padding: 12px 8px;
+  text-align: center;
+  border-bottom: 2px solid #dee2e6;
+}
+.order-detail-table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid #eee;
+  vertical-align: middle;
+  text-align: center;
+}
+.order-detail-table td:first-child {
+  text-align: left;
+}
+.order-detail-table tbody tr:hover {
+  background: #f8f9fa;
+}
+/* 페이지네이션 스타일 (상품목록과 동일) */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin: 30px 0 0 0;
+}
+.pagination-btns {
+  display: flex;
+  gap: 10px;
+}
+.pagination-btn {
+  width: 40px;
+  height: 40px;
+  background: #fff;
+  border: 2px solid #111;
+  border-radius: 8px;
+  color: #111;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+.pagination-btn.current,
+.pagination-btn:hover {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+@media (max-width: 900px) {
+    .mypage-wrapper {
+        flex-direction: column;
+        max-width: 100%;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    .mypage-sidebar {
+        width: 100%;
+        flex-direction: row;
+        justify-content: center;
+        padding: 24px 0;
+    }
+    .sidebar-menu {
+        display: flex;
+        flex-direction: row;
+        gap: 24px;
+    }
+    .mypage-main {
+        padding: 32px 12px 32px 12px;
+    }
+    .mypage-tab-content { max-width: 100%; padding: 0 8px; }
+}

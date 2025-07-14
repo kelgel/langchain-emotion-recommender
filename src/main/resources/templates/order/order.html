@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/default_base}">
+
+<head>
+    <title>주문하기</title>
+    <th:block layout:fragment="css">
+        <link rel="stylesheet" th:href="@{/order/order.css}">
+    </th:block>
+    <script src="https://ssl.daumcdn.net/dmaps/map_js_init/postcode.v2.js"></script>
+</head>
+
+<body>
+<main layout:fragment="content" class="order-main-layout">
+    <section class="order-table-section">
+        <h2 class="order-header">주문하기</h2>
+        <!-- 주문상품 정보 -->
+        <section class="order-info-section">
+            <div class="order-info-title">주문상품 정보</div>
+            <table class="order-table">
+                <colgroup>
+                    <col style="width: 60%">
+                    <col style="width: 20%">
+                    <col style="width: 20%">
+                </colgroup>
+                <thead>
+                <tr>
+                    <th>상품정보</th>
+                    <th>수량</th>
+                    <th>금액</th>
+                </tr>
+                </thead>
+                <tbody id="orderItemsList">
+                <tr th:each="orderItem : ${orderList}" th:attr="data-isbn=${orderItem.isbn}">
+                    <td class="order-info-cell">
+                        <img th:src="${orderItem.img}" alt="썸네일" class="order-thumb">
+                        <div class="order-info-text">
+                            <div class="order-title" th:text="${orderItem.productName}"></div>
+                            <div class="order-author" th:text="${orderItem.author}"></div>
+                        </div>
+                    </td>
+                    <td class="center" th:text="${orderItem.productQuantity} + '개'"></td>
+                    <td class="center" th:text="${#numbers.formatInteger(orderItem.productQuantity * orderItem.price, 0, 'COMMA')} + '원'"></td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+        <!-- 주문자 정보 -->
+        <section class="orderer-info-section">
+            <div class="order-info-title">주문자 정보</div>
+            <div class="content-form">
+                <label for="order_member" class="required-label">주문하시는 분</label>
+                <input type="text" id="order_member" name="order_member" class="input-field-flex" th:value="${loginUser.userName}" required>
+            </div>
+            <div class="content-form">
+                <label for="address" class="required-label">주소</label>
+                <input type="text" id="address" name="address" class="input-field-flex" th:value="${loginUser.userAddress}" required>
+            </div>
+            <div class="content-form">
+                <label for="detail_address">상세주소</label>
+                <input type="text" id="detail_address" name="detail_address" class="input-field-flex" th:value="${loginUser.userAddressDetail}">
+            </div>
+            <div class="content-form">
+                <label for="phone_number" class="required-label">휴대폰 번호</label>
+                <input type="tel" id="phone_number" name="phone_number" class="input-field-flex" th:value="${loginUser.userPhoneNumber}" required>
+            </div>
+            <div class="content-form">
+                <label for="email" class="required-label">이메일</label>
+                <input type="email" id="email" name="email" class="input-field-flex" th:value="${loginUser.userEmail}" required />
+            </div>
+        </section>
+        <!-- 배송 정보 -->
+        <section class="delivery-info-section">
+            <div class="order-info-title">배송 정보</div>
+            <div class="content-form">
+                <label>배송지 확인</label>
+                <div class="radio-group">
+                    <label for="same_as_member_info" class="choice_label">
+                        <input type="radio" id="same_as_member_info" name="address_check" class="choices" checked>주문자 정보와 동일
+                    </label>
+                    <label for="custom_address" class="choice_label">
+                        <input type="radio" id="custom_address" name="address_check" class="choices">직접 입력
+                    </label>
+                </div>
+            </div>
+            <div class="content-form">
+                <label for="receiver" class="required-label">받으실 분</label>
+                <input type="text" id="receiver" name="receiver" class="input-field-flex" required>
+            </div>
+            <div class="content-form">
+                <label for="receiver_address" class="required-label">받으실 곳</label>
+                <input type="text" id="receiver_address" name="receiver_address" class="input-field-flex" required readonly>
+                <button type="button" class="btn-address-search" id="addressSearchBtn">주소검색</button>
+            </div>
+            <div class="content-form">
+                <label for="receiver_detail_address">상세주소</label>
+                <input type="text" id="receiver_detail_address" name="receiver_detail_address" class="input-field-flex" placeholder="상세주소를 입력하세요.">
+            </div>
+            <div class="content-form">
+                <label for="receiver_phone_number" class="required-label">휴대폰 번호</label>
+                <input type="tel" id="receiver_phone_number" name="receiver_phone_number" class="input-field-flex" required>
+            </div>
+            <div class="content-form">
+                <label for="delivery_message">남기실 말씀</label>
+                <input type="text" id="delivery_message" name="delivery_message" class="input-field-flex">
+            </div>
+        </section>
+        <!-- 결제 정보 -->
+        <section class="payment-info-section">
+            <div class="order-info-title">결제 정보</div>
+            <div class="content-form">
+                <label class="required-label">결제 수단</label>
+                <div class="radio-group">
+                    <label for="payment_by_kakao" class="choice_label">
+                        <input type="radio" id="payment_by_kakao" name="payment_method" class="choices">카카오페이
+                    </label>
+                    <label for="payment_by_account" class="choice_label">
+                        <input type="radio" id="payment_by_account" name="payment_method" class="choices">무통장 입금
+                    </label>
+                </div>
+            </div>
+        </section>
+        <div class="total_price" style="text-align:center; font-weight:bold; margin-top:24px;">
+            총 결제 금액(배송비 제외) <span id="orderTotalPrice">0원</span>
+        </div>
+    </section>
+    <aside class="order-summary-aside">
+        <div class="price-summary" id="orderSummaryBox">
+            <div class="summary-item">
+                <span class="summary-label">총 <span id="summaryProductCount">0</span>개의 상품</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">총 상품 금액</span>
+                <span class="summary-value" id="summaryProductPrice">0원</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">총 배송비</span>
+                <span class="summary-value" id="summaryShippingFee">0원</span>
+            </div>
+            <div class="summary-item total">
+                <span class="summary-label">최종 결제 금액</span>
+                <span class="summary-value" id="summaryTotalPrice">0원</span>
+            </div>
+            <label for="order_agree">
+                <input type="checkbox" id="order_agree" name="order_agree" value="is_agree"/>
+                (필수) 구매하실 상품의 결제정보를 확인하였으며, 구매진행에 동의합니다.
+            </label>
+            <button type="submit" class="btn-order" id="orderSubmitBtn">결제하기</button>
+        </div>
+    </aside>
+</main>
+<th:block layout:fragment="javascript">
+    <script th:src="@{/order/order.js}"></script>
+</th:block>
+</body>
+</html>

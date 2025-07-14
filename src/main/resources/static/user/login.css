@@ -1,0 +1,346 @@
+/* 전체 페이지 배경 - 화이트로 변경 */
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #ffffff;
+    font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column; /* 세로 배치로 변경 */
+}
+
+/* 메인 컨테이너 - 로그인 박스를 중앙에 배치하고 푸터는 하단에 */
+.main-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+}
+
+/* 로그인 컨테이너 - 고정 높이 설정으로 크기 변화 방지 */
+.login-container {
+    width: 100%;
+    max-width: 400px;
+    min-height: 600px;
+    padding: 20px 40px 40px;
+    background: white;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+/* 로고 영역 */
+.login-logo {
+    margin-bottom: 20px;
+}
+
+.login-logo img {
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* 사이트 로고 텍스트 */
+.site-title {
+    font-size: 23px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 40px 0;
+    letter-spacing: -0.5px;
+}
+
+/* 폼 그룹 */
+.form-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+/* 입력 필드 기본 스타일 */
+.form-group input[type="text"],
+.form-group input[type="password"],
+.form-group input[type="email"] {
+    width: 100%;
+    height: 50px;
+    padding: 0 15px;
+    border: 1px solid #e1e1e1;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #333;
+    background-color: #fff;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="password"]:focus,
+.form-group input[type="email"]:focus {
+    outline: none;
+    border-color: #000000;
+}
+
+.form-group input[type="text"]::placeholder,
+.form-group input[type="password"]::placeholder,
+.form-group input[type="email"]::placeholder {
+    color: #999;
+    font-size: 14px;
+}
+
+/* 비밀번호 입력 래퍼 */
+.password-wrapper {
+    position: relative;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #999;
+    font-size: 16px;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+}
+
+.password-toggle:hover {
+    color: #666;
+}
+
+.eye-icon {
+    font-style: normal;
+}
+
+/* 에러 메시지 - 고정 높이로 레이아웃 안정화 */
+.error-message {
+    color: #e74c3c;
+    font-size: 12px;
+    margin-top: 8px;
+    min-height: 16px;
+    display: block;
+    text-align: left;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.error-message.show {
+    opacity: 1;
+}
+
+/* 통합 메시지 영역 */
+.message-area {
+    text-align: center;
+    margin: 0 0 20px 0;
+    font-size: 14px;
+    padding: 0;
+    border-radius: 4px;
+    min-height: 0; /* 내용이 없을 때는 공간을 차지하지 않음 */
+    opacity: 0;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.message-area.show {
+    opacity: 1;
+    padding: 15px;
+    min-height: auto;
+}
+
+/* 에러 메시지 스타일 */
+.message-area.error {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+/* 성공 메시지 스타일 */
+.message-area.success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+/* 정보 메시지 스타일 (아이디 찾기 결과 등) */
+.message-area.info {
+    background-color: #e8f4fd;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
+    font-weight: 500;
+    font-size: 16px;
+}
+
+/* 로그인 버튼 */
+.login-btn {
+    width: 100%;
+    height: 50px;
+    background-color: #000;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+.login-btn:enabled:hover {
+    background-color: #333;
+}
+
+.login-btn:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* 폼 옵션 (아이디 저장 + 링크들) */
+.form-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 20px 0;
+    font-size: 14px;
+}
+
+/* 아이디 저장 섹션 */
+.remember-section {
+    display: flex;
+    align-items: center;
+}
+
+.remember-checkbox {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 14px;
+    color: #666;
+}
+
+.remember-checkbox input[type="checkbox"] {
+    display: none;
+}
+
+.checkmark {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #ddd;
+    border-radius: 2px;
+    margin-right: 8px;
+    position: relative;
+    display: inline-block;
+    background-color: white;
+    transition: all 0.3s ease;
+}
+
+.remember-checkbox input[type="checkbox"]:checked + .checkmark {
+    background-color: #333;
+    border-color: #333;
+}
+
+.remember-checkbox input[type="checkbox"]:checked + .checkmark::after {
+    content: "✓";
+    position: absolute;
+    top: -2px;
+    left: 2px;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* 링크 영역 */
+.auth-links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.auth-links .link {
+    color: #666;
+    text-decoration: none;
+    font-size: 14px;
+    transition: color 0.3s ease;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.auth-links .link:hover {
+    color: #333;
+    text-decoration: underline;
+}
+
+.auth-links .divider {
+    color: #ddd;
+    font-size: 12px;
+}
+
+/* 회원가입/이전 버튼 */
+.register-btn,
+.back-btn {
+    width: 100%;
+    height: 50px;
+    background-color: transparent;
+    color: #333;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 0;
+}
+
+.register-btn:hover,
+.back-btn:hover {
+    background-color: #f8f8f8;
+    border-color: #333;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .form-options {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .auth-links {
+        align-self: flex-end;
+    }
+}
+
+@media (max-width: 480px) {
+    .main-content {
+        padding: 20px 15px;
+    }
+
+    .login-container {
+        padding: 40px 20px;
+        min-height: 550px;
+    }
+
+    .site-title {
+        font-size: 24px;
+        margin-bottom: 30px;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="password"],
+    .form-group input[type="email"],
+    .login-btn,
+    .register-btn,
+    .back-btn {
+        height: 45px;
+        font-size: 14px;
+    }
+
+    .form-options {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+}

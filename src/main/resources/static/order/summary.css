@@ -1,0 +1,198 @@
+/* 주문완료(요약) 페이지 레이아웃 */
+
+.summary_body {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 0 0 0;
+}
+
+.order_title {
+  font-size: 1.7em;
+  font-weight: bold;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+.container {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 36px;
+}
+
+.main_content {
+  flex: 1 1 0;
+  min-width: 600px;
+}
+
+.order_info_title {
+  font-size: 1.15em;
+  font-weight: bold;
+  margin: 12px 0 12px 0;
+  text-align: left;
+}
+
+.order_info_content {
+  margin-bottom: 18px;
+  background: #fff;
+  border-radius: 8px;
+  padding: 18px 18px 10px 18px;
+  border: 1px solid #e0e0e0;
+}
+.order_info_content.thick_border {
+  border-width: 2px;
+}
+
+.order_summary_info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px 40px;
+  margin-bottom: 10px;
+}
+.summary_item {
+  min-width: 220px;
+  font-size: 1.08em;
+  display: flex;
+  gap: 10px;
+}
+.summary_label {
+  color: #888;
+  font-weight: 500;
+}
+.summary_value {
+  color: #222;
+  font-weight: 600;
+}
+
+.product_item {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  border-bottom: 1px solid #f0f0f0;
+  padding: 12px 0;
+}
+.product_item:last-child {
+  border-bottom: none;
+}
+.product_details {
+  flex: 1 1 0;
+  min-width: 180px;
+}
+.product_name {
+  font-weight: 600;
+  font-size: 1.05em;
+  margin-bottom: 2px;
+}
+.product_option {
+  color: #888;
+  font-size: 0.97em;
+}
+.product_quantity, .product_price {
+  min-width: 70px;
+  text-align: right;
+  font-size: 1.05em;
+}
+
+.content-form {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.content-form label {
+  min-width: 110px;
+  font-size: 1em;
+  font-weight: 500;
+  text-align: left;
+}
+.content-value {
+  flex: 1 1 0;
+  font-size: 1em;
+  color: #222;
+}
+
+.summary_line {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 1.08em;
+}
+.summary_total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.15em;
+  font-weight: bold;
+  color: #ff6e2b;
+  margin-top: 18px;
+}
+
+/* 주문상품 테이블(order-table) 스타일 - order.css에서 복사 */
+.order-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  margin-bottom: 16px;
+}
+.order-table th, .order-table td {
+  border-bottom: 1px solid #e0e0e0;
+  padding: 14px 8px;
+  padding-left: 20px;
+  text-align: center;
+  vertical-align: middle;
+}
+.order-table th {
+  font-weight: bold;
+  font-size: 1.05em;
+}
+.order-table tr:last-child td {
+  border-bottom: none;
+}
+.order-thumb {
+  width: 45px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.order-info-cell {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 30px;
+  min-height: 72px;
+  padding-left: 8px;
+}
+.order-info-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  padding-left: 0;
+}
+.order-title {
+  font-weight: 600;
+  font-size: 1.05em;
+  margin-bottom: 0;
+  text-align: left;
+}
+.order-author {
+  color: #888;
+  font-size: 0.95em;
+  text-align: left;
+  margin-top: 0;
+}
+.center {
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .main_content {
+    min-width: 0;
+  }
+}

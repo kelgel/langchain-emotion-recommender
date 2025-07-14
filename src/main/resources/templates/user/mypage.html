@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/default_base}">
+
+<!-- 페이지 제목 -->
+<head>
+    <title>마이페이지</title>
+    
+    <!-- 이 페이지에만 필요한 CSS -->
+    <th:block layout:fragment="css">
+    <link rel="stylesheet" th:href="@{/user/mypage.css}">
+    </th:block>
+</head>
+
+<body>
+<!-- 메인 컨텐츠 -->
+<div layout:fragment="content" style="margin-left: 160px; margin-right: 160px; min-height: calc(100vh - 135px);">
+    <h2 class="mypage-page-title mypage-title">마이페이지 | 안녕하세요. '<span th:text="${userInfo.userNickname}">닉네임</span>' 님</h2>
+    <div class="mypage-tab-nav">
+        <button class="mypage-tab-btn active" data-tab="edit">회원정보 수정</button>
+        <button class="mypage-tab-btn" data-tab="orders">주문내역 조회</button>
+    </div>
+    <div class="mypage-tab-underline"></div>
+    <div class="mypage-tab-content">
+        <!-- 회원정보 수정 탭 -->
+        <div class="tab-panel tab-edit active">
+            <!-- 비밀번호 확인 영역 -->
+            <div id="pw-check-section">
+                <form id="pwCheckForm" method="post" autocomplete="off" style="max-width:400px;margin:40px auto 0 auto;">
+                    <label for="currentPassword" style="font-weight:500;font-size:1.08rem;">비밀번호 입력 <span class="required">*</span></label>
+                    <div style="display:flex;gap:10px;align-items:center;margin-top:8px;">
+                        <input type="password" id="currentPassword" name="currentPassword" required style="flex:1;min-width:0;">
+                        <button type="submit" id="pwCheckBtn" class="btn-black" style="width:100px;">확인</button>
+                    </div>
+                    <div id="pwCheckMsg" style="color:#e53935;font-size:0.97em;margin-top:6px;display:none;"></div>
+                </form>
+            </div>
+            <!-- 회원정보 수정 영역(초기에는 숨김) -->
+            <div id="edit-section" style="display:none;">
+                <form id="mypageEditForm" autocomplete="off">
+                    <div class="form-group">
+                        <label for="userName">이름 <span class="required">*</span></label>
+                        <input type="text" id="userName" name="userName" th:value="${userInfo.userName}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>생년월일 <span class="required">*</span></label>
+                        <input type="text" id="userBirth" name="userBirth" th:value="${userInfo.userBirth}" readonly style="background:#f5f5f5;">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="userId">아이디 <span class="required">*</span></label>
+                        <input type="text" id="userId" name="userId" th:value="${userInfo.idForUser}" readonly disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="userNickname">닉네임 <span class="required">*</span></label>
+                        <div class="input-row">
+                            <input type="text" id="userNickname" name="userNickname" th:value="${userInfo.userNickname}" required>
+                            <button type="button" id="checkNickname" class="btn-gray duplicate-check-btn check-nickname-btn" th:disabled="true">중복확인</button>
+                        </div>
+                        <div class="input-guide">한글, 영문(대/소), 숫자 조합가능, 2~10자</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="userPwd">비밀번호 <span class="required">*</span></label>
+                        <div class="input-row">
+                            <input type="password" id="userPwd" name="userPwd" required>
+                            <span class="pw-toggle" id="pwToggle1" title="비밀번호 보기">🙈</span>
+                        </div>
+                        <div class="input-guide">영문(대/소), 숫자, 특수문자 중 2가지 이상 조합 필수, 6~20자</div>
+                        <div class="pw-invalid" id="pwInvalidMsg">비밀번호 생성 규칙에 맞지 않습니다.</div>
+                        <div class="pw-valid" id="pwValidMsg">비밀번호 생성 규칙에 부합합니다.</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="userPwdCheck">비밀번호 확인 <span class="required">*</span></label>
+                        <div class="input-row">
+                            <input type="password" id="userPwdCheck" name="userPwdCheck" required>
+                            <span class="pw-toggle" id="pwToggle2" title="비밀번호 보기">🙈</span>
+                        </div>
+                        <div class="pw-mismatch" id="pwMismatchMsg">비밀번호가 불일치합니다.</div>
+                        <div class="pw-match" id="pwMatchMsg">비밀번호가 일치합니다.</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="userEmailId">이메일 <span class="required">*</span></label>
+                        <div class="input-row email-row">
+                            <input type="text" id="userEmailId" name="userEmailId" th:value="${#strings.substringBefore(userInfo.userEmail, '@')}" required style="width:100px;"> @
+                            <input type="text" id="userEmailDomain" name="userEmailDomain" th:value="${#strings.substringAfter(userInfo.userEmail, '@')}" required style="width:100px;" readonly>
+                            <select id="emailDomainSelect" style="width: 100px;">
+                                <option value="">도메인 선택</option>
+                                <option value="custom">직접입력</option>
+                                <option value="naver.com">naver.com</option>
+                                <option value="gmail.com">gmail.com</option>
+                                <option value="nate.com">nate.com</option>
+                                <option value="hanmail.net">hanmail.net</option>
+                                <option value="daum.net">daum.net</option>
+                            </select>
+                            <button type="button" id="checkEmail" class="btn-gray duplicate-check-btn check-email-btn" th:disabled="true">중복확인</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="userPhone1">휴대폰번호 <span class="required">*</span></label>
+                        <div class="input-row phone-row">
+                            <input type="text" id="userPhone1" name="userPhone1" maxlength="3" th:value="${#strings.substring(userInfo.userPhoneNumber, 0, 3)}" required style="width:60px;"> -
+                            <input type="text" id="userPhone2" name="userPhone2" maxlength="4" th:value="${#strings.substring(userInfo.userPhoneNumber, 3, 7)}" required style="width:70px;"> -
+                            <input type="text" id="userPhone3" name="userPhone3" maxlength="4" th:value="${#strings.substring(userInfo.userPhoneNumber, 7)}" required style="width:70px;">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="userAddress">주소 <span class="required">*</span></label>
+                        <div class="address-row">
+                            <input type="text" id="userAddress" name="userAddress" th:value="${userInfo.userAddress}" readonly required>
+                            <button type="button" id="searchAddress" class="btn-black">주소검색</button>
+                        </div>
+                        <input type="text" id="userAddressDetail" name="userAddressDetail" th:value="${userInfo.userAddressDetail}" placeholder="상세주소" required>
+                    </div>
+                    <button type="submit" id="editBtn" class="btn-black">수정</button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- 주문내역조회 탭 -->
+        <div class="tab-panel tab-orders">
+            <div class="order-list">
+                <div style="text-align:center;padding:50px;color:#666;">주문내역을 불러오는 중...</div>
+            </div>
+            <!-- 리뷰 작성/수정/삭제 모달 -->
+            <div id="review-modal" class="modal" style="display:none;position:fixed;z-index:9999;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.3);align-items:center;justify-content:center;">
+                <div class="modal-content" style="background:#fff;padding:30px 24px 20px 24px;border-radius:8px;min-width:320px;max-width:90vw;box-shadow:0 2px 16px rgba(0,0,0,0.15);position:relative;">
+                    <h3 id="review-modal-title" style="margin-bottom:16px;font-size:1.15em;font-weight:600;">리뷰 작성</h3>
+                    <input type="text" id="review-title" maxlength="50" placeholder="제목(최대 50자)" style="width:100%;margin-bottom:10px;padding:8px;box-sizing:border-box;">
+                    <textarea id="review-content" maxlength="500" placeholder="내용(최대 500자)" style="width:100%;height:100px;margin-bottom:10px;padding:8px;resize:none;overflow-y:auto;box-sizing:border-box;"></textarea>
+                    <div style="text-align:right;margin-bottom:10px;font-size:0.95em;color:#888;">
+                        <span id="review-length">0/500</span>
+                    </div>
+                    <div style="display:flex;gap:10px;justify-content:flex-end;">
+                        <button id="review-submit-btn" type="button" class="btn-black" style="width:80px;">등록</button>
+                        <button id="review-cancel-btn" type="button" class="btn-gray" style="width:80px;">취소</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 이 페이지에만 필요한 JavaScript -->
+<th:block layout:fragment="javascript">
+    <script th:src="@{/user/mypage.js}"></script>
+</th:block>
+</body>
+</html>

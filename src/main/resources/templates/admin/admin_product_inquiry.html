@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{admin/admin_default_base}">
+
+<head>
+    <meta charset="UTF-8">
+    <title>상품조회</title>
+    <th:block layout:fragment="css">
+        <link rel="stylesheet" th:href="@{/admin/admin_product_inquiry.css}">
+    </th:block>
+</head>
+
+<body>
+    <th:block layout:fragment="content">
+        <div class="product-list-wrapper">
+            <!-- 전체메뉴 버튼을 상품목록 텍스트 위로 이동 -->
+            <div class="menu-dropdown">
+                <button class="menu-toggle" id="menuToggle" aria-expanded="false" aria-label="전체 메뉴 열기">
+                    <div class="hamburger">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <span>전체메뉴</span>
+                </button>
+                <!-- 햄버거 메뉴 드롭다운 -->
+                <div class="menu-dropdown-content" id="menuDropdown" role="menu">
+                    <!-- 닫기 버튼 -->
+                    <button class="menu-close-btn" id="menuCloseBtn" aria-label="메뉴 닫기">✕</button>
+                    <div class="category-section">
+                        <!-- 좌측: 대분류 목록 -->
+                        <div class="top-category-list">
+                            <h4>카테고리</h4>
+                            <div id="topCategoryContainer">
+                                <!-- JavaScript에서 동적 생성 -->
+                            </div>
+                        </div>
+                        <!-- 우측: 중분류/소분류 영역 -->
+                        <div class="sub-category-area">
+                            <div id="subCategoryContainer">
+                                <!-- JavaScript에서 동적 생성 -->
+                            </div>
+                            <!-- 기본 메시지 -->
+                            <div class="default-message" style="padding: 50px 20px; text-align: center; color: #999;">
+                                좌측에서 카테고리를 선택해주세요
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="category-header">
+                <h1 id="categoryTitle">상품목록</h1>
+            </div>
+            <main>
+                <div class="product-list-layout">
+                    <!-- 좌측 상세검색 영역 -->
+                    <aside class="search-filter-box">
+                        <div class="search-filter-header">
+                            <div class="search-filter-title">상세검색</div>
+                            <a href="#" id="resetSearchBtn" class="reset-search-btn">초기화</a>
+                        </div>
+                        <form id="detailSearchForm">
+                            <label for="searchTitle">제목</label>
+                            <input type="text" id="searchTitle" name="title" placeholder="제목을 입력하세요">
+                            <label for="searchAuthor">저자명</label>
+                            <input type="text" id="searchAuthor" name="author" placeholder="저자명을 입력하세요">
+                            <label for="searchPublisher">출판사</label>
+                            <input type="text" id="searchPublisher" name="publisher" placeholder="출판사를 입력하세요">
+                            <label for="salesStatus">판매상태</label>
+                            <select id="salesStatus" name="salesStatus">
+                                <option value="">전체</option>
+                                <option value="ON_SALE">판매중</option>
+                                <option value="OUT_OF_PRINT">절판</option>
+                                <option value="TEMPORARILY_OUT_OF_STOCK">일시품절</option>
+                                <option value="EXPECTED_IN_STOCK">입고예정</option>
+                            </select>
+                            <label for="startDate">등록일</label>
+                            <div class="date-range-inputs">
+                                <input type="date" id="startDate" name="startDate" placeholder="시작일">
+                                <span class="date-separator">~</span>
+                                <input type="date" id="endDate" name="endDate" placeholder="종료일">
+                            </div>
+                            <button type="submit" class="detail-search-btn">상세검색</button>
+                        </form>
+                    </aside>
+                    <!-- 우측 상품목록 영역 -->
+                    <section class="product-list-main">
+                        <!-- 필터 영역 (우측 정렬) -->
+                        <div class="filter-section filter-right-align">
+                            <div class="filter-selectors">
+                                <select id="sortSelect" name="sort">
+                                    <option value="latest">최신순</option>
+                                    <option value="oldest">오래된순</option>
+                                    <option value="sales">판매량순</option>
+                                    <option value="rating">평점순</option>
+                                    <option value="title_asc">도서명 오름차순</option>
+                                    <option value="title_desc">도서명 내림차순</option>
+                                    <option value="price_high">높은 가격순</option>
+                                    <option value="price_low">낮은 가격순</option>
+                                </select>
+                                <select id="pageSizeSelect" name="size">
+                                    <option value="30" selected>30개씩 보기</option>
+                                    <option value="50">50개씩 보기</option>
+                                    <option value="100">100개씩 보기</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- 상품 목록 카트 스타일 (product_list와 동일) -->
+                        <div class="product-list-cart-style">
+                            <!-- 헤더(컬럼명) -->
+                            <div class="product-row header-row">
+                                <div class="col-info" style="text-align:center; justify-content:center;">상품정보</div>
+                                <div class="col-status">판매상태</div>
+                                <div class="col-stock">현재 재고</div>
+                                <div class="col-price">가격</div>
+                                <div class="col-action">관리</div>
+                            </div>
+                            <!-- 상품 row - JavaScript에서 동적 생성 -->
+                            <div id="productList">
+                                <!-- 상품 목록이 여기에 동적으로 생성됩니다 -->
+                            </div>
+                        </div>
+                        <!-- 페이지네이션 -->
+                        <div class="pagination-container" id="paginationContainer">
+                            <div class="pagination-btns" id="paginationBtns">
+                                <!-- 페이지네이션 버튼들이 여기에 동적으로 생성됩니다 -->
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </main>
+        </div>
+    </th:block>
+
+    <th:block layout:fragment="javascript">
+        <script th:src="@{/admin/admin_product_inquiry.js}"></script>
+    </th:block>
+</body>
+</html>

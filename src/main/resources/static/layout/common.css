@@ -1,0 +1,45 @@
+/* 기본 타이포그래피 */
+body {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 16px;
+    color: #222;
+    background-color: #fdfdfd;
+    line-height: 1.6;
+}
+
+/* 제목 태그 */
+h1 {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+h2 {
+    font-size: 1.75rem;
+    font-weight: bold;
+    margin-bottom: 0.75rem;
+}
+h3 {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+/* 문단 */
+p {
+    margin-bottom: 1rem;
+}
+
+/* 기본 링크 */
+a {
+    color: #000000;
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+
+/* 폼 요소 기본 스타일 */
+input, textarea, button, select {
+    font-family: inherit;
+    font-size: 1rem;
+}

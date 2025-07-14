@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{admin/admin_default_base}">
+<head>
+    <meta charset="UTF-8">
+    <title>상품등록</title>
+    <th:block layout:fragment="css">
+        <link rel="stylesheet" th:href="@{/admin/admin_product_register.css}">
+    </th:block>
+</head>
+<body>
+<th:block layout:fragment="content">
+    <div class="admin-main-content">
+        <div class="category-header">
+            <h1>상품등록</h1>
+        </div>
+        <div class="register-form-container">
+            <form class="product-register-form" id="productRegisterForm" autocomplete="off">
+                <div class="form-group">
+                    <label for="isbn">ISBN <span class="required">*</span></label>
+                    <div class="isbn-input-container">
+                        <input type="text" id="isbn" name="isbn" maxlength="20" required inputmode="numeric" pattern="[0-9]*">
+                        <button type="button" id="duplicateCheckBtn">중복확인</button>
+                    </div>
+                    <div class="validation-message" id="isbnValidation"></div>
+                </div>
+                <div class="form-group">
+                    <label>카테고리 <span class="required">*</span></label>
+                    <div class="category-selects-horizontal">
+                        <select id="topCategory" name="topCategory" required>
+                            <option value="">대분류 선택</option>
+                        </select>
+                        <select id="middleCategory" name="middleCategory" required disabled>
+                            <option value="">중분류 선택</option>
+                        </select>
+                        <select id="lowCategory" name="lowCategory" required disabled>
+                            <option value="">소분류 선택</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="title">제목 <span class="required">*</span></label>
+                        <input type="text" id="title" name="title" maxlength="200" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="author">저자명 <span class="required">*</span></label>
+                        <input type="text" id="author" name="author" maxlength="100" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="publisher">출판사 <span class="required">*</span></label>
+                        <input type="text" id="publisher" name="publisher" maxlength="100" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="price">가격 <span class="required">*</span></label>
+                        <input type="number" id="price" name="price" min="0" max="99999999" required inputmode="numeric" pattern="[0-9]*">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="rate">평점 <span class="required">*</span></label>
+                        <input type="number" id="rate" name="rate" min="0" max="10" step="0.1" required inputmode="decimal" pattern="[0-9.]*">
+                    </div>
+                    <div class="form-group">
+                        <label for="img">썸네일(URL) <span class="required">*</span></label>
+                        <input type="url" id="img" name="img" maxlength="1000" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="briefDescription">약식설명</label>
+                    <textarea id="briefDescription" name="briefDescription" rows="5" maxlength="2000" style="resize: none; min-height: 160px; overflow-y: auto;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="detailDescription">상세설명</label>
+                    <textarea id="detailDescription" name="detailDescription" rows="10" maxlength="5000" style="resize: none; min-height: 260px; overflow-y: auto;"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group size-group">
+                        <label>사이즈정보 <span class="required">*</span></label>
+                        <div class="size-inputs">
+                            <input type="number" id="width" name="width" placeholder="가로(mm)" min="0" max="9999" required inputmode="numeric" pattern="[0-9]*">
+                            <input type="number" id="height" name="height" placeholder="세로(mm)" min="0" max="9999" required inputmode="numeric" pattern="[0-9]*">
+                            <input type="number" id="page" name="page" placeholder="페이지수" min="1" max="9999" required inputmode="numeric" pattern="[0-9]*">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="salesStatus">판매상태 <span class="required">*</span></label>
+                        <select id="salesStatus" name="salesStatus" required>
+                            <option value="ON_SALE">판매중</option>
+                            <option value="OUT_OF_PRINT">절판</option>
+                            <option value="TEMPORARILY_OUT_OF_STOCK">일시품절</option>
+                            <option value="EXPECTED_IN_STOCK">입고예정</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="regDate">출판일 <span class="required">*</span></label>
+                        <input type="date" id="regDate" name="regDate" required>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="register-btn" id="registerBtn" disabled>등록</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</th:block>
+<th:block layout:fragment="javascript">
+    <script th:src="@{/admin/admin_product_register.js}"></script>
+</th:block>
+</body>
+</html>

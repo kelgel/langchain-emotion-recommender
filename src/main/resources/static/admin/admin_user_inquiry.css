@@ -1,0 +1,780 @@
+/* 관리자 회원조회 페이지 CSS (주문조회 CSS 기반) */
+
+/* 회원조회 래퍼 - 주문조회와 동일한 패딩 */
+.user-list-wrapper {
+    max-width: calc(100% - 280px);
+    margin: 0 auto 0 280px;
+    padding: 10px 40px 40px 20px;
+    position: relative;
+    z-index: 1;
+}
+
+/* 2단 레이아웃 */
+.product-list-layout {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    min-height: calc(100vh - 200px);
+    box-sizing: border-box;
+}
+
+/* 좌측 상세검색 박스 */
+.search-filter-box {
+    width: 260px;
+    background: #f7f7f7;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    margin-top: 20px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 2;
+    flex-shrink: 0;
+}
+
+.search-filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.search-filter-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #222;
+}
+
+.reset-search-btn {
+    font-size: 14px;
+    color: #666;
+    text-decoration: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.reset-search-btn:hover {
+    background-color: #e0e0e0;
+    text-decoration: none;
+}
+
+.search-filter-box label {
+    font-size: 15px;
+    font-weight: 500;
+    margin-top: 10px;
+    margin-bottom: 4px;
+    color: #333;
+    display: block;
+}
+
+.search-filter-box input[type="text"], 
+.search-filter-box input[type="date"],
+.search-filter-box select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 15px;
+    margin-bottom: 8px;
+    box-sizing: border-box;
+    background: white;
+}
+
+/* 날짜 범위 입력 */
+.date-range-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.date-range-inputs input[type="date"] {
+    flex: 1;
+    margin-bottom: 0;
+    text-align: center;
+    min-width: 0;
+}
+
+.date-separator {
+    color: #666;
+    font-weight: 500;
+}
+
+.detail-search-btn {
+    width: 100%;
+    padding: 10px 0;    
+    background: #000000;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 600;
+    margin-top: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.detail-search-btn:hover {
+    background: #333;
+}
+
+/* 우측 회원목록 메인 */
+.user-list-main {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+/* 카테고리 경로 */
+.category-header {
+    border-bottom: 2px solid #333;
+    padding-bottom: 15px;
+    margin: 0 0 10px 0;
+    max-width: 100%;
+    position: relative;
+    z-index: 3;
+}
+
+.category-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #333;
+    margin: 0;
+    letter-spacing: -1px;
+}
+
+/* 필터 영역 우측정렬 */
+.filter-section.filter-right-align {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 15px 0 10px 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.filter-selectors {
+    display: flex;
+    gap: 12px;
+}
+
+.sort-selector select, .page-size-selector select, .filter-selectors select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: white;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+/* 회원목록 카드 */
+.user-list {
+    width: 100%;
+    margin: 20px 0;
+}
+
+.user-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: box-shadow 0.2s;
+}
+
+.user-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.user-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.user-main-info {
+    flex: 1;
+}
+
+.user-name-grade {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.user-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+}
+
+.user-nickname {
+    font-size: 14px;
+    color: #666;
+    font-weight: normal;
+}
+
+.user-ids {
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.user-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.user-detail-item {
+    font-size: 14px;
+    color: #333;
+}
+
+.user-detail-label {
+    font-weight: 500;
+    color: #555;
+}
+
+.user-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.user-status-info {
+    text-align: right;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+/* 회원등급별 색상 */
+.grade-bz { color: #cd7f32 !important; font-weight: 600; } /* BRONZE */
+.grade-sv { color: #c0c0c0 !important; font-weight: 600; } /* SILVER */
+.grade-gd { color: #ffd700 !important; font-weight: 600; } /* GOLD */
+.grade-pl { color: #9932cc !important; font-weight: 600; } /* PLATINUM */
+
+/* 회원상태별 색상 */
+.status-active { color: #28a745 !important; font-weight: 600; }
+.status-inactive { color: #9c9c9c !important; font-weight: 600; }
+.status-dormant { color: #ffc107 !important; font-weight: 600; }
+.status-withdrawn { color: #dc3545 !important; font-weight: 600; }
+
+/* 주문내역 버튼 */
+.btn-order-history {
+    padding: 6px 12px;
+    background: #000000;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.btn-order-history:hover {
+    background: #333;
+}
+
+/* 페이지네이션 */
+.pagination-container {
+    display: flex;
+    justify-content: center;
+    margin: 30px 0 0 0;
+}
+
+.pagination-btns {
+    display: flex;
+    gap: 10px;
+}
+
+.pagination-btn {
+    width: 40px;
+    height: 40px;
+    background: #fff;
+    border: 2px solid #111;
+    border-radius: 8px;
+    color: #111;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    outline: none;
+}
+
+.pagination-btn.current,
+.pagination-btn:hover {
+    background: #111;
+    color: #fff;
+    border-color: #111;
+}
+
+.pagination-btn:disabled {
+    background: #f8f9fa;
+    color: #6c757d;
+    cursor: not-allowed;
+    border-color: #ddd;
+}
+
+/* 회원 주문내역 모달 */
+.user-order-modal {
+    z-index: 3000;
+}
+
+.large-modal {
+    width: 95%;
+    max-width: 1200px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.extra-large-modal {
+    width: 95%;
+    max-width: 1400px;
+    height: 90vh;
+    max-height: 900px;
+}
+
+.large-modal .modal-body {
+    padding: 0;
+    max-height: calc(90vh - 120px);
+    overflow-y: auto;
+}
+
+.extra-large-modal .modal-body {
+    height: calc(100% - 60px);
+    overflow-y: auto;
+    padding: 20px;
+}
+
+/* 임베드된 주문조회 컨테이너 */
+.embedded-order-container {
+    height: 100%;
+    overflow-y: auto;
+}
+
+.embedded-order-container .product-list-layout {
+    min-height: auto;
+    height: 100%;
+}
+
+/* 임베드된 상세검색 박스 */
+.search-filter-box.embedded {
+    width: 220px;
+    padding: 16px;
+    margin-top: 0;
+}
+
+.search-filter-box.embedded .search-filter-title {
+    font-size: 18px;
+}
+
+.search-filter-box.embedded label {
+    font-size: 13px;
+    margin-top: 8px;
+    margin-bottom: 3px;
+}
+
+.search-filter-box.embedded input[type="text"], 
+.search-filter-box.embedded input[type="date"],
+.search-filter-box.embedded input[type="number"],
+.search-filter-box.embedded select {
+    padding: 6px 8px;
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.search-filter-box.embedded .detail-search-btn {
+    padding: 8px 0;
+    font-size: 14px;
+    margin-top: 8px;
+}
+
+/* 임베드된 주문목록 */
+.order-list-main.embedded {
+    flex: 1;
+}
+
+/* 주문금액 범위 입력 */
+.amount-range-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.amount-range-inputs input[type="number"] {
+    flex: 1;
+    margin-bottom: 0;
+    text-align: center;
+    min-width: 0;
+}
+
+.amount-separator {
+    color: #666;
+    font-weight: 500;
+}
+
+/* 모달 내부 주문목록 스타일 */
+.embedded .order-list-main {
+    padding: 20px;
+}
+
+.embedded .filter-section {
+    margin-bottom: 15px;
+}
+
+.embedded .order-list {
+    margin: 15px 0;
+}
+
+/* 주문 카드 스타일 (주문조회에서 복사) */
+.order-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: box-shadow 0.2s;
+}
+
+.order-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.order-header {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.order-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.order-info {
+    flex: 1;
+}
+
+.order-number {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.order-date {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.order-status {
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 5px;
+    color: #333;
+}
+
+.user-info {
+    font-size: 14px;
+    color: #333;
+    margin-top: 5px;
+    font-weight: 500;
+}
+
+.order-summary {
+    font-size: 14px;
+    color: #333;
+    margin-top: 5px;
+    font-weight: 600;
+}
+
+/* 주문상태별 색상 */
+.completed { color: #0066cc !important; }
+.delivered { color: #28a745 !important; }
+.shipping { color: #17a2b8 !important; }
+.preparing { color: #ffc107 !important; }
+.failed { color: #dc3545 !important; }
+.cancelled { color: #6c757d !important; }
+
+.price-red {
+    font-weight: bold;
+    color: #e74c3c;
+}
+
+.shipping-info {
+    font-weight: normal;
+    color: #666;
+}
+
+.order-actions {
+    text-align: right;
+}
+
+.btn-status-change {
+    padding: 8px 16px;
+    background: #000;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.btn-status-change:hover {
+    background: #333;
+}
+
+.btn-status-change.disabled {
+    background: #ccc;
+    color: #666;
+    cursor: not-allowed;
+}
+
+/* 주문 상품 목록 */
+.order-items {
+    margin-top: 15px;
+}
+
+.order-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.order-item:last-child {
+    border-bottom: none;
+}
+
+.item-image {
+    width: 50px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-right: 15px;
+    background: #eee;
+}
+
+.item-info {
+    flex: 1;
+}
+
+.item-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 3px;
+    line-height: 1.3;
+}
+
+.item-author {
+    font-size: 14px;
+    color: #666;
+}
+
+.item-quantity {
+    font-size: 14px;
+    color: #333;
+    margin-right: 15px;
+    min-width: 60px;
+    text-align: center;
+}
+
+.item-price {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    min-width: 80px;
+    text-align: right;
+}
+
+/* 모달 스타일 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    max-width: 10000px;
+    max-height: 140vh;
+    overflow-y: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    overflow: visible !important;
+}
+
+/* 상태변경 모달 크기 */
+#statusChangeModal .modal-content {
+    width: 90%;
+    max-width: 600px;
+    min-width: 400px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #999;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    color: #333;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 20px;
+    border-top: 1px solid #eee;
+}
+
+.btn-cancel, .btn-save {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-cancel {
+    background: #f8f9fa;
+    color: #333;
+    border: 1px solid #ddd;
+}
+
+.btn-cancel:hover {
+    background: #e9ecef;
+}
+
+.btn-save {
+    background: #000;
+    color: white;
+}
+
+.btn-save:hover {
+    background: #333;
+}
+
+/* 에러 및 빈 상태 메시지 */
+.error-message, .no-users, .no-orders {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+    font-size: 16px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    margin: 20px 0;
+}
+
+/* 반응형 */
+@media (max-width: 1024px) {
+    .product-list-layout {  
+        flex-direction: column;
+        gap: 0;
+    }
+    .search-filter-box {
+        width: 100%;
+        margin-bottom: 24px;
+        max-width: 500px;
+    }
+    .category-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 768px) {
+    .product-list-layout {
+        flex-direction: column;
+        gap: 0;
+        padding: 10px;
+    }
+    .search-filter-box {
+        width: 100%;
+        margin-bottom: 18px;
+        padding: 18px 10px 14px 10px;
+    }
+    .user-list-main {
+        padding: 0;
+    }
+    .category-header {
+        padding-bottom: 10px;
+    }
+    .filter-section.filter-right-align {
+        padding: 10px 0 8px 0;
+    }
+    .user-table-container {
+        overflow-x: auto;
+    }
+    .large-modal {
+        width: 98%;
+        max-height: 95vh;
+    }
+}
+
+.modal-body, .embedded-order-container {
+    overflow-y: auto !important;
+    max-height: 70vh;
+    height: 100%;
+}

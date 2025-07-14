@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title layout:title-pattern="$CONTENT_TITLE | 관리자모드">관리자모드</title>
+
+  <!-- Reset CSS - 모든 페이지에 공통 적용 -->
+  <link rel="stylesheet" th:href="@{/layout/reset.css}">
+  <link rel="stylesheet" th:href="@{/layout/common.css}">
+  <link rel="stylesheet" th:href="@{/admin/admin_aside.css}">
+
+  <!-- 페이지별 추가 CSS -->
+  <th:block layout:fragment="css"></th:block>
+</head>
+<body>
+<!-- 관리자 사이드바 -->
+<div th:insert="~{admin/admin_aside :: admin_aside}"></div>
+
+<!-- 메인 컨텐츠 영역 -->
+<main class="admin-main-content" layout:fragment="content">
+  <!-- 각 페이지의 고유 컨텐츠가 여기에 들어갑니다 -->
+</main>
+
+<!-- 페이지별 추가 JavaScript -->
+<th:block layout:fragment="javascript"></th:block>
+</body>
+</html>

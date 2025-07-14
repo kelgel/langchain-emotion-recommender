@@ -1,0 +1,128 @@
+/* 푸터 전체 스타일 - 3줄 레이아웃 */
+.main-footer {
+    background: #ffffff;
+    color: #ecf0f1;
+    margin-top: 20px;
+    padding: 20px 0; /* 위아래 패딩 최소화 */
+    font-size: 13px;
+    line-height: 1.3;
+}
+
+.footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* 각 줄 스타일 */
+.footer-line {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px; /* 줄 간격 최소화 */
+    gap: 15px;
+}
+
+.footer-line h4 {
+    color: #000000;
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+    min-width: 80px; /* 제목 너비 고정 */
+    flex-shrink: 0;
+}
+
+.footer-line span {
+    color: #000000;
+    font-size: 13px;
+    flex: 1;
+}
+
+/* 카피라이트 스타일 */
+.footer-copyright {
+    text-align: center;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #606060;
+}
+
+.footer-copyright span {
+    color: #333333;
+    font-size: 12px;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .footer-line {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+        margin-bottom: 10px;
+    }
+
+    .footer-line h4 {
+        min-width: auto;
+    }
+
+    .footer-line span {
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
+    .main-footer {
+        padding: 12px 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .footer-container {
+        padding: 0 15px;
+    }
+
+    .footer-line span {
+        font-size: 11px;
+    }
+
+    .footer-copyright span {
+        font-size: 11px;
+    }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .footer-content {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
+    }
+
+    .footer-section {
+        max-width: none;
+    }
+
+    .main-footer {
+        padding: 25px 0 15px 0;
+    }
+
+    .footer-container {
+        padding: 0 15px;
+        max-width: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .footer-section h3 {
+        font-size: 15px;
+    }
+
+    .footer-section p {
+        font-size: 12px;
+    }
+
+    .footer-bottom {
+        font-size: 11px;
+    }
+
+    .footer-content {
+        gap: 15px;
+    }
+}

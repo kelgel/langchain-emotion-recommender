@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>결제 성공</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 50px; 
+            background-color: #f8f9fa;
+        }
+        .success-message {
+            color: #28a745;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .loading {
+            font-size: 16px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="success-message">✅ <span th:text="${message ?: '결제가 완료되었습니다'}"></span></div>
+    <div class="loading">주문 완료 처리 중입니다...</div>
+    
+    <script th:inline="javascript">
+        console.log('🟢 결제 성공 페이지 로드됨');
+        
+        const messageType = /*[[${messageType}]]*/ 'KAKAO_PAY_SUCCESS';
+        
+        // 부모창에 결제 성공 신호 전송
+        if (window.opener && !window.opener.closed) {
+            console.log('🟢 부모창에 결제 성공 신호 전송:', messageType);
+            window.opener.postMessage(messageType, '*');
+        } else {
+            console.log('🔴 부모창이 없거나 닫혔음 - 직접 summary로 이동');
+            window.location.href = '/order/summary';
+        }
+    </script>
+</body>
+</html>

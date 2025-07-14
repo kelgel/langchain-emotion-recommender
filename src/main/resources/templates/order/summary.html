@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/default_base}">
+
+<head>
+    <title>주문완료</title>
+    <th:block layout:fragment="css">
+        <link rel="stylesheet" th:href="@{/order/summary.css}">
+    </th:block>
+</head>
+
+<body>
+<main layout:fragment="content" class="summary-main-layout">
+    <div class="summary_body">
+        <div class="order_title">주문완료</div>
+        <div class="container">
+            <div class="main_content">
+                <div class="order_info_title">주문요약</div>
+                <div class="order_info_content">
+                    <div class="content-form">
+                        <label>주문번호</label>
+                        <div class="content-value" th:text="${orderId ?: '-'}">-</div>
+                    </div>
+                    <div class="content-form">
+                        <label>주문일시</label>
+                        <div class="content-value" th:text="${orderDate ?: '-'}">-</div>
+                    </div>
+                    <div class="content-form">
+                        <label>주문자</label>
+                        <div class="content-value" th:text="${ordererName ?: '-'}">-</div>
+                    </div>
+                    <div class="content-form">
+                        <label>결제번호</label>
+                        <div class="content-value" th:text="${paymentId ?: '-'}">-</div>
+                    </div>
+                    <div class="content-form">
+                        <label>결제수단</label>
+                        <div class="content-value" th:text="${paymentMethod ?: '-'}">-</div>
+                    </div>
+                </div>
+
+                <div class="order_info_title">주문상품 정보</div>
+                <div class="order_info_content">
+                    <table class="order-table">
+                        <colgroup>
+                            <col style="width: 60%">
+                            <col style="width: 20%">
+                            <col style="width: 20%">
+                        </colgroup>
+                        <thead>
+                        <tr>
+                            <th>상품정보</th>
+                            <th>수량</th>
+                            <th>금액</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="product : ${productList}">
+                            <td class="order-info-cell">
+                                <img th:src="${product.img}" alt="썸네일" class="order-thumb">
+                                <div class="order-info-text">
+                                    <div class="order-title" th:text="${product.productName}">상품명</div>
+                                    <div class="order-author" th:text="${product.author}">저자</div>
+                                </div>
+                            </td>
+                            <td class="center" th:text="${product.quantity} + '개'">1개</td>
+                            <td class="center" th:text="${#numbers.formatInteger(product.totalPrice, 0, 'COMMA')} + '원'">15,000원</td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(productList)}">
+                            <td colspan="3" class="center">주문 상품이 없습니다.</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="order_info_title">주문자 정보</div>
+                <div class="order_info_content">
+                    <div class="content-form">
+                        <label>주문하시는 분</label>
+                        <div class="content-value" th:text="${ordererName ?: '-'}">-</div>
+                    </div>
+                    <div class="content-form">
+                        <label>주소</label>
+                        <div class="content-value">
+                            <span th:if="${ordererAddress != null and !#strings.isEmpty(ordererAddress)}">
+                                <span th:text="${ordererAddress}"></span>
+                                <span th:if="${ordererDetailAddress != null and !#strings.isEmpty(ordererDetailAddress)}"
+                                      th:text="', ' + ${ordererDetailAddress}"></span>
+                            </span>
+                            <span th:unless="${ordererAddress != null and !#strings.isEmpty(ordererAddress)}">-</span>
+                        </div>
+                    </div>
+                    <div class="content-form">
+                        <label>휴대폰 번호</label>
+                        <div class="content-value" th:text="${ordererPhone ?: '-'}">-</div>
+                    </div>
+                    <div class="content-form">
+                        <label>이메일</label>
+                        <div class="content-value" th:text="${ordererEmail ?: '-'}">-</div>
+                    </div>
+                </div>
+
+                <div class="order_info_title">배송 정보</div>
+                <div class="order_info_content">
+                    <div class="content-form">
+                        <label>받으실 분</label>
+                        <div class="content-value" th:text="${ordererName ?: '-'}">-</div>
+                    </div>
+                    <div class="content-form">
+                        <label>받으실 곳</label>
+                        <div class="content-value">
+                            <span th:if="${ordererAddress != null and !#strings.isEmpty(ordererAddress)}">
+                                <span th:text="${ordererAddress}"></span>
+                                <span th:if="${ordererDetailAddress != null and !#strings.isEmpty(ordererDetailAddress)}"
+                                      th:text="', ' + ${ordererDetailAddress}"></span>
+                            </span>
+                            <span th:unless="${ordererAddress != null and !#strings.isEmpty(ordererAddress)}">-</span>
+                        </div>
+                    </div>
+                    <div class="content-form">
+                        <label>휴대폰 번호</label>
+                        <div class="content-value" th:text="${ordererPhone ?: '-'}">-</div>
+                    </div>
+                    <div class="content-form">
+                        <label>남기실 말씀</label>
+                        <div class="content-value">-</div>
+                    </div>
+                </div>
+
+                <div class="order_info_title">최종 결제사항</div>
+                <div class="order_info_content">
+                    <div class="summary_line">
+                        <div>총 상품 금액</div>
+                        <div th:text="${#numbers.formatInteger(totalProductPrice ?: 0, 0, 'COMMA')} + '원'">0원</div>
+                    </div>
+                    <div class="summary_line">
+                        <div>총 배송비</div>
+                        <div th:text="${shippingFee == 0 ? '무료' : (#numbers.formatInteger(shippingFee, 0, 'COMMA') + '원')}">무료</div>
+                    </div>
+                    <div class="summary_total">
+                        <div>최종 결제금액</div>
+                        <div th:text="${#numbers.formatInteger(finalAmount ?: 0, 0, 'COMMA')} + '원'">0원</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 메인 페이지로 이동 버튼 -->
+        <div style="text-align:center; margin-top:36px;">
+            <button id="goMainBtn" style="background:#111; color:#fff; font-size:1.1em; padding:14px 48px; border:none; border-radius:8px; cursor:pointer;">메인 페이지로 이동</button>
+        </div>
+    </div>
+</main>
+<th:block layout:fragment="javascript">
+    <script th:src="@{/order/summary.js}"></script>
+</th:block>
+</body>
+</html>

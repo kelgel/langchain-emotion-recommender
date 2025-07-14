@@ -1,0 +1,104 @@
+.main-container {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+section {
+    margin-bottom: 48px;
+}
+
+.bestseller-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    font-size: 1.0rem;
+    margin-bottom: 20px;
+}
+
+.bestseller-tab {
+    cursor: pointer;
+    padding: 0 10px;
+    color: #222;
+    font-weight: 400;
+    transition: color 0.2s, font-weight 0.2s;
+    background: none;
+    border: none;
+    outline: none;
+}
+.bestseller-tab.active {
+    font-weight: 700;
+    text-decoration: underline;
+}
+.divider {
+    color: #bbb;
+    font-size: 1.1em;
+    user-select: none;
+}
+/* 기존 버튼 스타일 제거 */
+.bestseller-tab.button, .bestseller-tab.active.button {
+    all: unset;
+}
+
+.bestseller-list, .newproduct-list {
+    display: flex;
+    background: #f5f5f5;
+    border-radius: 10px;
+    padding: 24px 0;
+    justify-content: space-around;
+    align-items: flex-start;
+    margin-bottom: 32px;
+    gap: 0;
+}
+
+.product-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 160px;
+    margin: 0 8px;
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    position: static;
+    text-align: center;
+}
+.product-rank {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #000000;
+    margin-bottom: 8px;
+    height: 1.5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.product-img {
+    width: 90px;
+    height: 120px;
+    object-fit: cover;
+    background: #eee;
+    margin-bottom: 8px;
+    border-radius: 4px;
+}
+.product-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #222;
+    margin-bottom: 2px;
+    text-align: center;
+    text-decoration: none;
+    display: block;
+    line-height: 1.3;
+    word-break: break-word;
+}
+.product-author {
+    font-size: 0.95rem;
+    color: #666;
+    text-align: center;
+}
+/* 카드 테두리/그림자 제거 */
+.product-item:hover {
+    box-shadow: none;
+}

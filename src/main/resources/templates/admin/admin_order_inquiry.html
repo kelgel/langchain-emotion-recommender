@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{admin/admin_default_base}">
+
+<head>
+    <meta charset="UTF-8">
+    <title>주문조회</title>
+    <th:block layout:fragment="css">
+        <link rel="stylesheet" th:href="@{/admin/admin_order_inquiry.css}">
+    </th:block>
+</head>
+
+<body>
+    <th:block layout:fragment="content">
+        <div class="order-list-wrapper">
+            <div class="category-header">
+                <h1>주문조회</h1>
+            </div>
+            <main>
+                <div class="product-list-layout">
+                    <!-- 좌측 상세검색 영역 -->
+                    <aside class="search-filter-box">
+                        <div class="search-filter-header">
+                            <div class="search-filter-title">상세검색</div>
+                            <a href="#" id="resetSearchBtn" class="reset-search-btn">초기화</a>
+                        </div>
+                        <form id="detailSearchForm">
+                            <label for="orderId">주문번호</label>
+                            <input type="text" id="orderId" name="orderId" placeholder="숫자만 입력" maxlength="20" inputmode="numeric">
+
+                            <label for="startDate">주문일</label>
+                            <div class="date-range-inputs">
+                                <input type="date" id="startDate" name="startDate">
+                                <span class="date-separator">~</span>
+                                <input type="date" id="endDate" name="endDate">
+                            </div>
+                            
+                            <label for="userId">주문자ID</label>
+                            <input type="text" id="userId" name="userId" placeholder="주문자ID(IFA/IFU)" maxlength="50">
+
+                            <label for="orderStatus">주문상태</label>
+                            <select id="orderStatus" name="orderStatus">
+                                <option value="">전체</option>
+                                <option value="ORDER_REQUESTED">주문요청</option>
+                                <option value="ORDER_FAILED">주문실패</option>
+                                <option value="ORDER_COMPLETED">주문완료</option>
+                                <option value="PREPARING_PRODUCT">상품준비중</option>
+                                <option value="SHIPPING">배송중</option>
+                                <option value="DELIVERED">배송완료</option>
+                                <option value="CANCEL_COMPLETED">취소완료</option>
+                            </select>
+                            
+                            <label for="minAmount">주문금액</label>
+                            <div class="amount-range-inputs">
+                                <input type="number" id="minAmount" name="minAmount" placeholder="최소금액" min="0">
+                                <span class="amount-separator">~</span>
+                                <input type="number" id="maxAmount" name="maxAmount" placeholder="최대금액" min="0">
+                            </div>
+
+                            <button type="submit" class="detail-search-btn">상세검색</button>
+                        </form>
+                    </aside>
+                    <!-- 우측 주문목록 영역 -->
+                    <section class="order-list-main">
+                        <!-- 필터 영역 (우측 정렬) -->
+                        <div class="filter-section filter-right-align">
+                            <div class="filter-selectors">
+                                <select id="sortSelect">
+                                    <option value="latest">주문일 최신순</option>
+                                    <option value="oldest">주문일 오래된순</option>
+                                    <option value="highPrice">높은 주문금액순</option>
+                                    <option value="lowPrice">낮은 주문금액순</option>
+                                </select>
+                                <select id="pageSizeSelect">
+                                    <option value="30">30개씩 보기</option>
+                                    <option value="50">50개씩 보기</option>
+                                    <option value="100">100개씩 보기</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 주문목록 -->
+                        <div id="orderList" class="order-list">
+                            <!-- 주문 카드들이 여기에 동적으로 추가됩니다 -->
+                        </div>
+
+                        <!-- 페이지네이션 -->
+                        <div class="pagination-container">
+                            <div class="pagination-btns" id="paginationBtns">
+                                <!-- 페이지네이션 버튼들이 여기에 동적으로 추가됩니다 -->
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </main>
+        </div>
+    </th:block>
+
+    <th:block layout:fragment="javascript">
+        <script>
+            console.log('인라인 스크립트 실행됨');
+            
+            // 페이지 로드 후 즉시 테스트
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('DOM 로드 완료');
+                
+                // 간단한 API 테스트
+                fetch('/admin/api/orders/test')
+                    .then(response => {
+                        console.log('API 응답 상태:', response.status);
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('API 응답 데이터:', data);
+                        
+                        const orderList = document.getElementById('orderList');
+                        if (data.totalCount === 0) {
+                            orderList.innerHTML = '<div class="no-orders">주문 데이터가 없습니다.</div>';
+                        } else {
+                            orderList.innerHTML = '<div>주문 ' + data.totalCount + '건 발견</div>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('API 에러:', error);
+                        const orderList = document.getElementById('orderList');
+                        orderList.innerHTML = '<div class="error-message">API 호출 실패</div>';
+                    });
+            });
+        </script>
+        <script th:src="@{/admin/admin_order_inquiry.js}"></script>
+    </th:block>
+</body>
+</html>

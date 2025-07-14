@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/user_base}">
+
+<head>
+    <title>로그인</title>
+
+    <!-- 로그인 페이지 전용 CSS -->
+    <th:block layout:fragment="css">
+        <link rel="stylesheet" th:href="@{/user/login.css}">
+    </th:block>
+</head>
+
+<body>
+<div layout:fragment="content">
+    <div class="main-content">
+        <div class="login-container">
+            <!-- 로고 영역 -->
+            <div class="login-logo">
+                <a th:href="@{/main}">
+                    <img src="/layout/YESorNO.24_이미지.png" alt="YESorNO.24 로고">
+                </a>
+            </div>
+
+            <!-- 페이지 제목 (동적) -->
+            <h1 class="site-title" id="pageTitle">로그인</h1>
+
+            <!-- 통합 메시지 영역 (하나만 사용) -->
+            <div class="message-area" id="messageArea">
+                <!-- 상황에 따라 에러/성공/결과 메시지가 여기에 표시됩니다 -->
+            </div>
+
+            <!-- 로그인 폼 -->
+            <form th:action="@{/login}" method="post" id="loginForm" onsubmit="return false;">
+
+                <!-- 아이디 입력 -->
+                <div class="form-group" id="usernameGroup">
+                    <input type="text"
+                           id="username"
+                           name="username"
+                           placeholder="아이디를 입력해 주세요"
+                           autocomplete="username">
+                    <div class="error-message" id="usernameError">
+                        아이디를 입력해 주세요.
+                    </div>
+                </div>
+
+                <!-- 비밀번호 입력 -->
+                <div class="form-group" id="passwordGroup">
+                    <div class="password-wrapper">
+                        <input type="password"
+                               id="password"
+                               name="password"
+                               placeholder="비밀번호를 입력해 주세요"
+                               autocomplete="current-password">
+                        <button type="button" class="password-toggle" id="passwordToggle">
+                            <i class="eye-icon">🙈</i>
+                        </button>
+                    </div>
+                    <div class="error-message" id="passwordError">
+                        비밀번호를 입력해 주세요.
+                    </div>
+                </div>
+
+                <!-- 이름 입력 (아이디/비밀번호 찾기용) - 아이디 다음에 배치 -->
+                <div class="form-group" id="nameGroup" style="display: none;">
+                    <input type="text"
+                           id="name"
+                           name="name"
+                           placeholder="이름을 입력해 주세요"
+                           autocomplete="name">
+                    <div class="error-message" id="nameError">
+                        이름을 입력해 주세요.
+                    </div>
+                </div>
+
+                <!-- 이메일 입력 (아이디 찾기용) -->
+                <div class="form-group" id="emailGroup" style="display: none;">
+                    <input type="email"
+                           id="email"
+                           name="email"
+                           placeholder="등록된 이메일을 입력해 주세요"
+                           autocomplete="email">
+                    <div class="error-message" id="emailError">
+                        이메일을 입력해 주세요.
+                    </div>
+                </div>
+
+                <!-- 아이디 저장 및 링크 영역 -->
+                <div class="form-options" id="formOptions">
+                    <div class="remember-section" id="rememberSection">
+                        <label class="remember-checkbox">
+                            <input type="checkbox" id="rememberMe" name="remember-me">
+                            <span class="checkmark"></span>
+                            아이디 저장
+                        </label>
+                    </div>
+                    <div class="auth-links">
+                        <a class="link" id="findIdLink">아이디 찾기</a>
+                        <span class="divider">|</span>
+                        <a class="link" id="findPasswordLink">비밀번호 찾기</a>
+                    </div>
+                </div>
+
+                <!-- 메인 버튼 (로그인/아이디찾기/비밀번호찾기) -->
+                <button type="submit" class="login-btn" id="mainBtn" disabled>
+                    로그인
+                </button>
+            </form>
+
+            <!-- 하단 버튼 (회원가입/이전) -->
+            <button type="button" class="register-btn" id="bottomBtn" onclick="location.href='/register'">
+                회원가입
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 로그인 페이지 전용 JavaScript -->
+<th:block layout:fragment="javascript">
+    <script th:src="@{/user/login.js}"></script>
+</th:block>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/default_base}">
+
+<head>
+    <title th:text="${product.productName}">상품상세</title>
+
+    <!-- 이 페이지에만 필요한 CSS -->
+    <th:block layout:fragment="css">
+        <link rel="stylesheet" th:href="@{/product/product_detail.css}">
+    </th:block>
+</head>
+
+<body>
+<div layout:fragment="content">
+    <div class="product-detail-container">
+        <div class="product-thumbnail">
+            <img th:src="${product.img}" alt="책 표지"/>
+        </div>
+        <div class="product-info">
+            <h2 th:text="${product.productName}"></h2>
+            <div class="product-author" th:text="'저자: ' + ${product.author}"></div>
+            <div class="product-publisher" th:text="'출판사: ' + ${product.publisher}"></div>
+            <div class="product-publish-date"
+                 th:text="${product.regDate != null ? '출판일: ' + #temporals.format(product.regDate, 'yyyy-MM-dd') : '출판일 정보없음'}"></div>
+            <div class="product-status">
+                <span style="color:black;">판매상태: </span>
+                <span th:text="${salesStatusKor}"
+                      th:classappend="${product.salesStatus != null && product.salesStatus.name() != 'ON_SALE' ? 'status-danger' : 'status-bold'}">
+        </span>
+            </div>
+            <div class="product-rating" style="margin-bottom: 24px;" th:text="'평점: ' + ${product.rate} + ' / 10.0'"></div>
+            <div class="product-purchase-row" style="display: flex; align-items: center; gap: 24px;">
+                <span class="label" style="width: 90px;">총 상품금액</span>
+                <span class="total-price" id="totalPrice" th:text="${product.price} + '원'"
+                      th:attr="data-unit-price=${product.price}"
+                      style="font-size:1.5em; font-weight:bold; min-width:120px; display:inline-block; text-align:right;"></span>
+                <div class="product-quantity-row" style="display: flex; align-items: center; gap: 4px;">
+                    <button class="qty-btn minus-btn" id="qtyMinus" type="button">-</button>
+                    <input type="text" value="1" class="qty-input" id="qtyInput"
+                           style="width:56px; text-align:center; font-size:1.2em;"/>
+                    <button class="qty-btn plus-btn" id="qtyPlus" type="button">+</button>
+                </div>
+            </div>
+            <div class="product-btn-row">
+                <button class="cart-btn" type="button" onclick="addToCart()">장바구니 담기</button>
+                <button class="buy-btn"
+                        th:disabled="${product.salesStatus == null or product.salesStatus.name() != 'ON_SALE'}"
+                        th:classappend="${product.salesStatus == null or product.salesStatus.name() != 'ON_SALE' ? ' buy-btn-disabled' : ''}"
+                        type="button" onclick="buyNow()">
+                    바로 구매
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <hr class="product-section-divider">
+
+    <div class="product-extra-info">
+        <h2>상품정보</h2>
+        <ul>
+            <li th:text="'카테고리: ' + ${categoryPath}"></li>
+            <li th:text="'ISBN: ' + ${product.isbn}"></li>
+            <li th:text="'사이즈(가로 * 세로): ' + ${product.width} + 'mm * ' + ${product.height} + 'mm'"></li>
+            <li th:text="'페이지수: ' + ${product.page} + ' page'"></li>
+        </ul>
+    </div>
+
+    <div class="product-desc-section">
+        <div class="brief-desc" th:text="${product.briefDescription}"
+             style="font-weight:bold; font-style:italic; font-size:1.2em; margin-bottom:10px;"></div>
+        <div class="detail-desc" th:text="${product.detailDescription}"></div>
+    </div>
+
+    <div class="review-section" style="width:100%">
+        <div class="review-title">리뷰</div>
+        <table class="review-table">
+            <colgroup>
+                <col style="width: 50%">
+                <col style="width: 20%">
+                <col style="width: 20%">
+                <col style="width: 10%">
+            </colgroup>
+            <thead>
+            <tr>
+                <th>제목</th>
+                <th>작성자</th>
+                <th>작성일</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <th:block th:each="reviewData : ${reviewsWithNickname}">
+                <tr class="review-row">
+                    <td th:text="${reviewData.review.reviewTitle}"></td>
+                    <td th:text="${reviewData.nickname != null ? reviewData.nickname : '익명'}"></td>
+                    <td th:text="${reviewData.review.regDate != null ? #temporals.format(reviewData.review.regDate, 'yyyy-MM-dd') : '날짜 정보없음'}"></td>
+                    <td>
+                        <button class="toggle-btn" onclick="toggleReview(this)">▼</button>
+                    </td>
+                </tr>
+                <tr class="review-content-row" style="display:none;">
+                    <td colspan="4" class="review-content" th:text="${reviewData.review.reviewContent}"></td>
+                </tr>
+            </th:block>
+            <tr th:if="${#lists.isEmpty(reviewsWithNickname)}">
+                <td colspan="4">등록된 리뷰가 없습니다.</td>
+            </tr>
+            </tbody>
+        </table>
+        <div class="pagination-container" th:if="${totalReviewPages > 1}">
+            <div class="pagination-btns">
+                <button type="button"
+                        th:each="i : ${#numbers.sequence(0, totalReviewPages-1)}"
+                        th:class="${i == currentReviewPage ? 'pagination-btn current' : 'pagination-btn'}"
+                        th:attr="data-page=${i}"
+                        th:text="${i+1}"
+                        onclick="navigateToReviewPage(this)">
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block layout:fragment="javascript">
+    <script th:src="@{/product/product_detail.js}"></script>
+</th:block>
+</body>
+</html>

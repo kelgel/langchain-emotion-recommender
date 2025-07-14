@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/default_base}">
+
+<head>
+    <title>상품목록</title>
+    <th:block layout:fragment="css">
+        <link rel="stylesheet" th:href="@{/product/product_list.css}">
+    </th:block>
+</head>
+
+<body>
+<div layout:fragment="content">
+    <div class="product-list-wrapper">
+        <div class="category-header">
+            <h1 th:text="${categoryPath}">카테고리 경로</h1>
+        </div>
+        <main>
+            <div class="product-list-layout">
+                <!-- 좌측 상세검색 영역 -->
+                <aside class="search-filter-box">
+                    <div class="search-filter-title">상세검색</div>
+                    <form id="detailSearchForm" method="get" th:action="${categoryId != null ? '/product/category/low/' + categoryId : '/product/search-advanced'}">
+                        <!-- 일반검색어 유지용 hidden input -->
+                        <input type="hidden" name="q" th:value="${param.q}" th:if="${param.q != null}">
+                        <label for="searchTitle">제목</label>
+                        <input type="text" id="searchTitle" th:name="${categoryId != null ? 'title' : 'bookTitle'}" placeholder="제목을 입력하세요" th:value="${categoryId != null ? param.title : param.bookTitle}">
+                        <label for="searchAuthor">저자명</label>
+                        <input type="text" id="searchAuthor" name="author" placeholder="저자명을 입력하세요" th:value="${param.author}">
+                        <label for="searchPublisher">출판사</label>
+                        <input type="text" id="searchPublisher" name="publisher" placeholder="출판사를 입력하세요" th:value="${param.publisher}">
+                        <button type="submit" class="detail-search-btn">상세검색</button>
+                    </form>
+                </aside>
+                <!-- 우측 상품목록 영역 -->
+                <section class="product-list-main">
+                    <!-- 필터 영역 (우측 정렬) -->
+                    <div class="filter-section filter-right-align">
+                        <div class="filter-selectors">
+                            <select id="sortSelect" name="sort">
+                                <option value="latest" th:selected="${currentSort == 'latest'}">최신순</option>
+                                <option value="oldest" th:selected="${currentSort == 'oldest'}">오래된순</option>
+                                <option value="sales" th:selected="${currentSort == 'sales'}">판매량순</option>
+                                <option value="rating" th:selected="${currentSort == 'rating'}">평점순</option>
+                                <option value="title_asc" th:selected="${currentSort == 'title_asc'}">도서명 오름차순</option>
+                                <option value="title_desc" th:selected="${currentSort == 'title_desc'}">도서명 내림차순</option>
+                                <option value="price_high" th:selected="${currentSort == 'price_high'}">높은 가격순</option>
+                                <option value="price_low" th:selected="${currentSort == 'price_low'}">낮은 가격순</option>
+                            </select>
+                            <select id="pageSizeSelect" name="size">
+                                <option value="30" th:selected="${pageSize == 30}">30개씩 보기</option>
+                                <option value="50" th:selected="${pageSize == 50}">50개씩 보기</option>
+                                <option value="100" th:selected="${pageSize == 100}">100개씩 보기</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- 상품 목록 카트 스타일 -->
+                    <div class="product-list-cart-style">
+                      <!-- 헤더(컬럼명) - 항상 표시 -->
+                      <div class="product-row header-row">
+                        <div class="col-checkbox"><input type="checkbox" id="selectAllCheckbox"></div>
+                        <div class="col-info" style="text-align:center; justify-content:center;">상품정보</div>
+                        <div class="col-status">판매상태</div>
+                        <div class="col-price">가격</div>
+                        <div class="col-action"></div>
+                      </div>
+                      <!-- 상품이 없을 때 메시지 -->
+                      <div th:if="${products == null or #lists.isEmpty(products)}" class="no-products">조회된 상품이 없습니다.</div>
+                      <!-- 상품 row -->
+                      <div class="product-row" th:each="product : ${products}">
+                        <div class="col-checkbox">
+                          <input type="checkbox" class="row-checkbox" th:value="${product.isbn}" />
+                        </div>
+                        <div class="col-info">
+                          <a th:href="@{/product/detail/{isbn}(isbn=${product.isbn})}">
+                            <img th:src="${product.img}" th:alt="${product.productName}" class="product-img" />
+                          </a>
+                          <div class="product-info">
+                            <div class="product-title">
+                              <a th:href="@{/product/detail/{isbn}(isbn=${product.isbn})}" th:text="${product.productName}">상품명</a>
+                            </div>
+                            <div class="product-author" th:text="${'저자: ' + product.author}">저자</div>
+                            <div class="product-publisher" th:text="${'출판사: ' + product.publisher}">출판사</div>
+                            <div class="product-rating" th:text="${product.rate != null ? '평점: ' + #numbers.formatDecimal(product.rate, 1, 1) + '/10.0' : '평점 없음'}">평점</div>
+                          </div>
+                        </div>
+                        <div class="col-status">
+                          <span th:switch="${product.salesStatus}">
+                            <span th:case="'ON_SALE'" class="status-black">판매중</span>
+                            <span th:case="'OUT_OF_PRINT'" class="status-red">절판</span>
+                            <span th:case="'TEMPORARILY_OUT_OF_STOCK'" class="status-red">일시품절</span>
+                            <span th:case="'EXPECTED_IN_STOCK'" class="status-red">입고예정</span>
+                            <span th:case="*">-</span>
+                          </span>
+                        </div>
+                        <div class="col-price" th:text="${#numbers.formatInteger(product.price, 3, 'COMMA')} + '원'">15,000원</div>
+                        <div class="col-action">
+                          <button type="button" class="cart-btn" th:attr="data-isbn=${product.isbn}">장바구니</button>
+                          <button type="button" class="buy-btn"
+                                  th:attr="data-isbn=${product.isbn}"
+                                  th:disabled="${product.salesStatus != 'ON_SALE'}"
+                                  th:classappend="${product.salesStatus != 'ON_SALE'} ? ' buy-btn-disabled'">
+                            바로구매
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <!-- 페이지네이션 -->
+                    <div class="pagination-container" th:if="${totalPages > 1}">
+                      <div class="pagination-btns">
+                        <button type="button"
+                                th:each="pageNum : ${#numbers.sequence(1, totalPages)}"
+                                th:class="${pageNum == currentPage ? 'pagination-btn current' : 'pagination-btn'}"
+                                th:attr="data-page=${pageNum}"
+                                th:text="${pageNum}">
+                        </button>
+                      </div>
+                    </div>
+                    <!-- 목록 좌측 아래 [선택상품 장바구니] 버튼 -->
+                    <div class="cart-btn-container">
+                        <button type="button" id="addToCartBtn">선택상품 장바구니</button>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+</div>
+<th:block layout:fragment="javascript">
+    <script th:src="@{/product/product_list.js}"></script>
+</th:block>
+</body>
+</html>

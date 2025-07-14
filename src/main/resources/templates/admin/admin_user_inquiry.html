@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{admin/admin_default_base}">
+
+<head>
+    <meta charset="UTF-8">
+    <title>회원조회</title>
+    <th:block layout:fragment="css">
+        <link rel="stylesheet" th:href="@{/admin/admin_user_inquiry.css}">
+    </th:block>
+</head>
+
+<body>
+    <th:block layout:fragment="content">
+        <div class="user-list-wrapper">
+            <div class="category-header">
+                <h1>회원조회</h1>
+            </div>
+            <main>
+                <div class="product-list-layout">
+                    <!-- 좌측 상세검색 영역 -->
+                    <aside class="search-filter-box">
+                        <div class="search-filter-header">
+                            <div class="search-filter-title">상세검색</div>
+                            <a href="#" id="resetSearchBtn" class="reset-search-btn">초기화</a>
+                        </div>
+                        <form id="detailSearchForm">
+                            <label for="userName">회원명</label>
+                            <input type="text" id="userName" name="userName" placeholder="회원명" maxlength="50">
+
+                            <label for="userId">회원ID</label>
+                            <input type="text" id="userId" name="userId" placeholder="회원ID(IFA/IFU)" maxlength="50">
+
+                            <label for="startDate">가입일</label>
+                            <div class="date-range-inputs">
+                                <input type="date" id="startDate" name="startDate">
+                                <span class="date-separator">~</span>
+                                <input type="date" id="endDate" name="endDate">
+                            </div>
+
+                            <label for="userStatus">회원상태</label>
+                            <select id="userStatus" name="userStatus">
+                                <option value="">전체</option>
+                                <option value="ACTIVE">활성</option>
+                                <option value="INACTIVE">비활성</option>
+                                <option value="DORMANT">휴면</option>
+                                <option value="WITHDRAWN">탈퇴</option>
+                            </select>
+
+                            <label for="userGrade">회원등급</label>
+                            <select id="userGrade" name="userGrade">
+                                <option value="">전체</option>
+                                <option value="BZ">BRONZE</option>
+                                <option value="SV">SILVER</option>
+                                <option value="GD">GOLD</option>
+                                <option value="PL">PLATINUM</option>
+                            </select>
+
+                            <button type="submit" class="detail-search-btn">상세검색</button>
+                        </form>
+                    </aside>
+                    <!-- 우측 회원목록 영역 -->
+                    <section class="user-list-main">
+                        <!-- 필터 영역 (우측 정렬) -->
+                        <div class="filter-section filter-right-align">
+                            <div class="filter-selectors">
+                                <select id="sortSelect">
+                                    <option value="nameAsc">회원명 오름차순</option>
+                                    <option value="nameDesc">회원명 내림차순</option>
+                                    <option value="idAdminAsc">회원ID(IFA) 오름차순</option>
+                                    <option value="idAdminDesc">회원ID(IFA) 내림차순</option>
+                                    <option value="idUserAsc">회원ID(IFU) 오름차순</option>
+                                    <option value="idUserDesc">회원ID(IFU) 내림차순</option>
+                                    <option value="regDateAsc">가입일 오름차순</option>
+                                    <option value="regDateDesc">가입일 내림차순</option>
+                                </select>
+                                <select id="pageSizeSelect">
+                                    <option value="30">30개씩 보기</option>
+                                    <option value="50">50개씩 보기</option>
+                                    <option value="100">100개씩 보기</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 회원목록 카드 -->
+                        <div id="userList" class="user-list">
+                            <!-- 회원 카드들이 여기에 동적으로 추가됩니다 -->
+                        </div>
+
+                        <!-- 페이지네이션 -->
+                        <div class="pagination-container">
+                            <div class="pagination-btns" id="paginationBtns">
+                                <!-- 페이지네이션 버튼들이 여기에 동적으로 추가됩니다 -->
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </main>
+        </div>
+
+        <!-- 회원 주문내역 모달 -->
+        <div id="userOrderModal" class="modal-overlay user-order-modal" style="display: none;">
+            <div class="modal-content extra-large-modal">
+                <div class="modal-header">
+                    <h3 id="userOrderModalTitle">회원 주문내역</h3>
+                    <button class="modal-close" onclick="closeUserOrderModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <!-- 주문조회 화면이 여기에 임베드됩니다 -->
+                    <div id="orderEmbedContainer" class="embedded-order-container">
+                        <div class="product-list-layout embedded">
+                            <!-- 좌측 상세검색 영역 -->
+                            <aside class="search-filter-box embedded">
+                                <div class="search-filter-header">
+                                    <div class="search-filter-title">상세검색</div>
+                                </div>
+                                <form id="modalDetailSearchForm">
+                                    <label for="modalOrderId">주문번호</label>
+                                    <input type="text" id="modalOrderId" name="orderId" placeholder="숫자만 입력" maxlength="20" inputmode="numeric">
+
+                                    <label for="modalStartDate">주문일</label>
+                                    <div class="date-range-inputs">
+                                        <input type="date" id="modalStartDate" name="startDate">
+                                        <span class="date-separator">~</span>
+                                        <input type="date" id="modalEndDate" name="endDate">
+                                    </div>
+                                    
+                                    <label for="modalUserId">주문자ID</label>
+                                    <input type="text" id="modalUserId" name="userId" placeholder="주문자ID(IFA/IFU)" maxlength="50" readonly>
+
+                                    <label for="modalOrderStatus">주문상태</label>
+                                    <select id="modalOrderStatus" name="orderStatus">
+                                        <option value="">전체</option>
+                                        <option value="ORDER_REQUESTED">주문요청</option>
+                                        <option value="ORDER_FAILED">주문실패</option>
+                                        <option value="ORDER_COMPLETED">주문완료</option>
+                                        <option value="PREPARING_PRODUCT">상품준비중</option>
+                                        <option value="SHIPPING">배송중</option>
+                                        <option value="DELIVERED">배송완료</option>
+                                        <option value="CANCEL_COMPLETED">취소완료</option>
+                                    </select>
+                                    
+                                    <label for="modalMinAmount">주문금액</label>
+                                    <div class="amount-range-inputs">
+                                        <input type="number" id="modalMinAmount" name="minAmount" placeholder="최소금액" min="0">
+                                        <span class="amount-separator">~</span>
+                                        <input type="number" id="modalMaxAmount" name="maxAmount" placeholder="최대금액" min="0">
+                                    </div>
+
+                                    <button type="submit" class="detail-search-btn">상세검색</button>
+                                </form>
+                            </aside>
+                            <!-- 우측 주문목록 영역 -->
+                            <section class="order-list-main embedded">
+                                <!-- 필터 영역 -->
+                                <div class="filter-section filter-right-align">
+                                    <div class="filter-selectors">
+                                        <select id="modalSortSelect">
+                                            <option value="latest">주문일 최신순</option>
+                                            <option value="oldest">주문일 오래된순</option>
+                                            <option value="highPrice">높은 주문금액순</option>
+                                            <option value="lowPrice">낮은 주문금액순</option>
+                                        </select>
+                                        <select id="modalPageSizeSelect">
+                                            <option value="30">30개씩 보기</option>
+                                            <option value="50">50개씩 보기</option>
+                                            <option value="100">100개씩 보기</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- 주문목록 -->
+                                <div id="modalOrderList" class="order-list">
+                                    <!-- 주문 카드들이 여기에 동적으로 추가됩니다 -->
+                                </div>
+
+                                <!-- 페이지네이션 -->
+                                <div class="pagination-container">
+                                    <div class="pagination-btns" id="modalPaginationBtns">
+                                        <!-- 페이지네이션 버튼들이 여기에 동적으로 추가됩니다 -->
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </th:block>
+
+    <th:block layout:fragment="javascript">
+        <script th:src="@{/admin/admin_user_inquiry.js}"></script>
+    </th:block>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/default_base}">
+
+<!-- 페이지 제목 -->
+<head>
+    <title>MAIN</title>
+
+    <!-- 이 페이지에만 필요한 CSS -->
+    <th:block layout:fragment="css">
+        <link rel="stylesheet" th:href="@{/product/main.css}">
+    </th:block>
+</head>
+
+<body>
+<!-- 메인 컨텐츠 -->
+<div layout:fragment="content">
+    <main class="main-container">
+        <section class="bestseller-section">
+            <h3>베스트셀러</h3>
+            <div class="bestseller-tabs">
+                <span class="bestseller-tab active" data-type="weekly">주간</span>
+                <span class="divider">|</span>
+                <span class="bestseller-tab" data-type="monthly">월간</span>
+                <span class="divider">|</span>
+                <span class="bestseller-tab" data-type="yearly">연간</span>
+            </div>
+            <div class="bestseller-list" id="bestseller-list">
+                <!-- 베스트셀러 동적 렌더링 영역 -->
+            </div>
+        </section>
+        <section class="newproduct-section">
+            <h3>신상품</h3>
+            <div class="newproduct-list" id="newproduct-list">
+                <!-- 신상품 동적 렌더링 영역 -->
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- 이 페이지에만 필요한 JavaScript -->
+<th:block layout:fragment="javascript">
+    <script th:src="@{/product/main.js}"></script>
+</th:block>
+</body>
+</html>
