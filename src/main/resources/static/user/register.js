@@ -138,6 +138,13 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('닉네임을 입력하세요.');
             return;
         }
+        
+        // 최소자릿수 검증 추가
+        if (nickname.length < 2) {
+            alert('닉네임의 최소 자릿수는 2자리입니다.');
+            return;
+        }
+        
         fetch(`/api/check-nickname?nickname=${encodeURIComponent(nickname)}`)
             .then(res => { if (!res.ok) throw new Error('서버 오류'); return res.json(); })
             .then(data => {
@@ -179,6 +186,13 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('아이디를 입력하세요.');
             return;
         }
+        
+        // 최소자릿수 검증 추가
+        if (userId.length < 6) {
+            alert('아이디의 최소 자릿수는 6자리입니다.');
+            return;
+        }
+        
         fetch(`/api/check-id?userId=${encodeURIComponent(userId)}`)
             .then(res => { if (!res.ok) throw new Error('서버 오류'); return res.json(); })
             .then(data => {
@@ -273,7 +287,18 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('이름과 생년월일을 모두 입력하세요.');
             return;
         }
+        
+        // 미래날짜 검증 추가
         const birthDate = `${year}-${month}-${day}`;
+        const selectedDate = new Date(birthDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // 시간 부분 제거하여 날짜만 비교
+        
+        if (selectedDate > today) {
+            alert('생년월일은 오늘 날짜보다 미래일 수 없습니다.');
+            return;
+        }
+        
         console.log('가입확인', name, birthDate);
         fetch(`/api/check-joinable?userName=${encodeURIComponent(name)}&userBirth=${birthDate}`)
             .then(res => { if (!res.ok) throw new Error('서버 오류'); return res.json(); })

@@ -140,6 +140,12 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('닉네임을 입력하세요.');
             return;
         }
+        
+        // 최소자릿수 검증 추가
+        if (nickname.length < 2) {
+            alert('닉네임의 최소 자릿수는 2자리입니다.');
+            return;
+        }
             
             fetch(`/api/user/check-nickname?nickname=${encodeURIComponent(nickname)}`)
                 .then(res => res.json())

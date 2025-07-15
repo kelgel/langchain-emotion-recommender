@@ -247,8 +247,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // 실제 장바구니 담기
             await fetch('/cart/add', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ isbns: [isbn] })
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `isbn=${encodeURIComponent(isbn)}&quantity=1`
             });
             alert('장바구니에 담았습니다.');
         });
