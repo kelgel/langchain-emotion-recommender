@@ -736,8 +736,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div class="form-group">
                                     <label for="editIsbn">ISBN <span class="required">*</span></label>
                                     <div class="isbn-input-container">
-                                        <input type="text" id="editIsbn" value="${product.isbn}" maxlength="20" inputmode="numeric" pattern="[0-9]*">
-                                        <button type="button" id="editDuplicateCheckBtn">중복확인</button>
+                                        <input type="text" id="editIsbn" value="${product.isbn}" maxlength="20" inputmode="numeric" pattern="[0-9]*" readonly>
                                     </div>
                                     <div class="validation-message" id="editIsbnValidation"></div>
                                 </div>
@@ -848,67 +847,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 편집 모달 기능 초기화
     function initializeEditModal(product) {
-        // ISBN 중복확인 기능 초기화
-        const editIsbnInput = document.getElementById('editIsbn');
-        const editDuplicateCheckBtn = document.getElementById('editDuplicateCheckBtn');
-        const editIsbnValidation = document.getElementById('editIsbnValidation');
-        
+        // ISBN은 수정시 readonly이므로 중복확인 불필요
         window.editIsIsbnChecked = true; // 기존 ISBN은 이미 유효하다고 가정
-        
-        // ISBN 입력값 변경 시 중복확인 재설정
-        editIsbnInput.addEventListener('input', function() {
-            // 숫자만 입력 허용
-            this.value = this.value.replace(/[^0-9]/g, '');
-            
-            if (this.value === product.isbn) {
-                // 원래 ISBN과 같으면 유효
-                window.editIsIsbnChecked = true;
-                editDuplicateCheckBtn.disabled = true;
-                editIsbnValidation.textContent = '';
-            } else {
-                // 다른 ISBN이면 중복확인 필요
-                window.editIsIsbnChecked = false;
-                editDuplicateCheckBtn.disabled = false;
-                editIsbnValidation.textContent = '';
-            }
-        });
-        
-        // ISBN 중복확인 버튼 클릭
-        editDuplicateCheckBtn.addEventListener('click', function() {
-            const newIsbn = editIsbnInput.value.trim();
-            if (!newIsbn) {
-                alert('ISBN을 입력하세요.');
-                return;
-            }
-            
-            if (newIsbn === product.isbn) {
-                alert('현재 ISBN과 동일합니다.');
-                window.editIsIsbnChecked = true;
-                editDuplicateCheckBtn.disabled = true;
-                return;
-            }
-            
-            fetch(`/admin/api/product/check-isbn?isbn=${newIsbn}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.duplicated) {
-                        alert('이미 등록된 ISBN입니다.');
-                        editIsbnValidation.textContent = '중복된 ISBN입니다.';
-                        editIsbnValidation.className = 'validation-message error';
-                        window.editIsIsbnChecked = false;
-                    } else {
-                        alert('등록 가능한 ISBN입니다.');
-                        editIsbnValidation.textContent = '등록 가능한 ISBN입니다.';
-                        editIsbnValidation.className = 'validation-message success';
-                        window.editIsIsbnChecked = true;
-                        editDuplicateCheckBtn.disabled = true;
-                    }
-                })
-                .catch(error => {
-                    console.error('ISBN 중복확인 오류:', error);
-                    alert('중복확인 중 오류가 발생했습니다.');
-                });
-        });
         
         // 카테고리 기능 초기화
         initializeEditCategories(product.lowCategory);
@@ -1182,12 +1122,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 상품 정보 수정 확인
     window.confirmProductEdit = function(originalIsbn) {
-        // ISBN 중복확인 체크
-        if (!window.editIsIsbnChecked) {
-            alert('ISBN 중복확인을 먼저 해주세요.');
-            return;
-        }
-        
         // 필수 필드 수집 및 검증
         const newIsbn = document.getElementById('editIsbn').value.trim();
         const lowCategory = document.getElementById('editLowCategory').value;
