@@ -402,7 +402,7 @@ CREATE TABLE `spring_session_attributes` (
 
 LOCK TABLES `spring_session_attributes` WRITE;
 /*!40000 ALTER TABLE `spring_session_attributes` DISABLE KEYS */;
-INSERT INTO `spring_session_attributes` VALUES ('84a8ca9c-5ee7-4dc0-bfdf-d3a3f3d9d91e','isAdmin',_binary '¬\í\0sr\0java.lang.Boolean\Í r€Õœú\î\0Z\0valuexp'),('84a8ca9c-5ee7-4dc0-bfdf-d3a3f3d9d91e','isLoggedIn',_binary '¬\í\0sr\0java.lang.Boolean\Í r€Õœú\î\0Z\0valuexp'),('84a8ca9c-5ee7-4dc0-bfdf-d3a3f3d9d91e','user',_binary '¬\í\0sr\08bookstore_ai_project.dto.response.LoginResponse$UserInfo\0\0\0\0\0\0\0\0\nL\0\nidForAdmint\0Ljava/lang/String;L\0	idForUserq\0~\0L\0userAddressq\0~\0L\0userAddressDetailq\0~\0L\0	userEmailq\0~\0L\0userGradeIdq\0~\0L\0userNameq\0~\0L\0userNicknameq\0~\0L\0userPhoneNumberq\0~\0L\0\nuserStatust\0-Lbookstore_ai_project/entity/User$UserStatus;xppt\0admin_1ppppt\0íŒ¨ìŠ¤íŠ¸ìº í¼ìŠ¤ppp');
+INSERT INTO `spring_session_attributes` VALUES ('84a8ca9c-5ee7-4dc0-bfdf-d3a3f3d9d91e','isAdmin',_binary 'ï¿½\ï¿½\0sr\0java.lang.Boolean\ï¿½ rï¿½Õœï¿½\ï¿½\0Z\0valuexp'),('84a8ca9c-5ee7-4dc0-bfdf-d3a3f3d9d91e','isLoggedIn',_binary 'ï¿½\ï¿½\0sr\0java.lang.Boolean\ï¿½ rï¿½Õœï¿½\ï¿½\0Z\0valuexp'),('84a8ca9c-5ee7-4dc0-bfdf-d3a3f3d9d91e','user',_binary 'ï¿½\ï¿½\0sr\08bookstore_ai_project.dto.response.LoginResponse$UserInfo\0\0\0\0\0\0\0\0\nL\0\nidForAdmint\0Ljava/lang/String;L\0	idForUserq\0~\0L\0userAddressq\0~\0L\0userAddressDetailq\0~\0L\0	userEmailq\0~\0L\0userGradeIdq\0~\0L\0userNameq\0~\0L\0userNicknameq\0~\0L\0userPhoneNumberq\0~\0L\0\nuserStatust\0-Lbookstore_ai_project/entity/User$UserStatus;xppt\0admin_1ppppt\0íŒ¨ìŠ¤íŠ¸ìº í¼ìŠ¤ppp');
 /*!40000 ALTER TABLE `spring_session_attributes` ENABLE KEYS */;
 UNLOCK TABLES;
 
