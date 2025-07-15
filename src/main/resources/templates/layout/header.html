@@ -48,7 +48,14 @@
                 <!-- 사용자 메뉴 (우측 정렬) -->
                 <nav class="user-menu" aria-label="사용자 메뉴">
                     <!-- 로그인 상태에 따른 메뉴 -->
-                    <div th:if="${session.user}" class="user-logged-in">
+                    <!-- 관리자 로그인시 메뉴 -->
+                    <div th:if="${session.user != null && session.isAdmin}" class="user-logged-in">
+                        <a th:href="@{/logout}" class="header-link">로그아웃</a>
+                        <a th:href="@{/cart}" class="header-link" id="headerCartLink">장바구니</a>
+                        <a th:href="@{/admin/product-inquiry}" class="header-link" id="headerAdminLink">관리자페이지</a>
+                    </div>
+                    <!-- 일반 사용자 로그인시 메뉴 -->
+                    <div th:if="${session.user != null && !session.isAdmin}" class="user-logged-in">
                         <a th:href="@{/logout}" class="header-link">로그아웃</a>
                         <a th:href="@{/cart}" class="header-link" id="headerCartLink">장바구니</a>
                         <a th:href="@{/mypage}" class="header-link" id="headerMypageLink">마이페이지</a>
