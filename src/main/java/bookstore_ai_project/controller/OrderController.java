@@ -566,18 +566,12 @@ public class OrderController {
                 }
             }
 
-            // order 상태도 변경
-            Optional<Order> orderOpt = orderRepository.findById(new OrderId(orderId, idForAdmin));
-            if (orderOpt.isPresent()) {
-                Order order = orderOpt.get();
-                order.setOrderStatus(Order.OrderStatus.ORDER_FAILED);
-                order.setUpdateDate(LocalDateTime.now());
-                orderRepository.save(order);
-                System.out.println("[DEBUG] Order 실패 처리: " + order.getOrderId());
-            }
+            // 주문 상태는 변경하지 않음 (기존 결제 시도만 정리하는 목적)
+            // 실제 결제 실패시에만 주문을 실패로 변경해야 함
+            System.out.println("[DEBUG] 기존 결제건만 실패 처리 완료 - 주문 상태는 유지");
 
             result.put("success", true);
-            result.put("message", "결제 실패/이탈 및 주문실패 처리되었습니다.");
+            result.put("message", "기존 결제건 정리가 완료되었습니다.");
 
         } catch (Exception e) {
             System.out.println("[ERROR] 결제 실패 처리 중 오류:");

@@ -275,6 +275,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // === 결제 완료 처리 함수 (수정됨) ===
     async function onPaymentSuccess(afterSuccess) {
+        // 결제 진행 상태 플래그 해제
+        window.paymentInProgress = false;
+        console.log('🔵 결제 성공: paymentInProgress = false');
+        
+        // 이탈 감지 이벤트 리스너 다시 추가
+        window.addEventListener('beforeunload', window.sendOrderFail);
+        window.addEventListener('unload', window.sendOrderFail);
+        console.log('🔵 이탈 감지 이벤트 리스너 다시 추가');
+        
         const orderId = sessionStorage.getItem('orderId');
         const idForAdmin = sessionStorage.getItem('idForAdmin');
 
@@ -345,38 +354,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // === 결제 실패 처리 함수 (새로 추가) ===
+    // === 빈 결제 실패 함수 (팝업 닫힘용) ===
     async function onPaymentFail() {
-        const orderId = sessionStorage.getItem('orderId');
-        const idForAdmin = sessionStorage.getItem('idForAdmin');
-
-        if (orderId && idForAdmin && !window.orderFailSent) {
-            try {
-                // 1. 주문 상태를 ORDER_FAILED로 변경
-                await fetch('/api/order/update-status', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        orderId: orderId,
-                        idForAdmin: idForAdmin,
-                        status: 'ORDER_FAILED'
-                    })
-                });
-
-                // 2. 결제 상태를 PAYMENT_FAILED로 변경
-                await fetch('/api/payment/fail', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        orderId: orderId
-                    })
-                });
-
-                window.orderFailSent = true;
-            } catch (error) {
-                console.error('결제 실패 처리 중 오류:', error);
-            }
-        }
+        console.log('🔵 onPaymentFail 호출 - 아무것도 하지 않음 (결제수단 변경 허용)');
     }
 
     // === 결제 버튼 클릭 시 paymentId 생성 및 payment 테이블 insert (강화된 디버깅) ===
@@ -430,6 +410,15 @@ document.addEventListener('DOMContentLoaded', function () {
             alert('결제 정보가 부족합니다. 페이지를 새로고침 후 다시 시도해주세요.');
             return;
         }
+
+        // 결제 진행 상태 플래그 설정
+        window.paymentInProgress = true;
+        console.log('🔵 결제 진행 상태 설정: paymentInProgress = true');
+        
+        // 결제 진행 중에는 이탈 감지 이벤트 리스너 일시 제거
+        window.removeEventListener('beforeunload', window.sendOrderFail);
+        window.removeEventListener('unload', window.sendOrderFail);
+        console.log('🔵 이탈 감지 이벤트 리스너 일시 제거');
 
         // 새로운 결제 시도 전 기존 PAYMENT_ATTEMPT 상태의 결제건들을 FAILED로 변경
         console.log('🔵 기존 결제건 FAILED 처리 시작');
@@ -493,10 +482,27 @@ document.addEventListener('DOMContentLoaded', function () {
                     // 결제창 열기
                     if (paymentKakaoRadio.checked) {
                         console.log('🔵 카카오페이 결제창 열기');
-                        kakaoPayRequest();
+                        try {
+                            kakaoPayRequest();
+                        } catch (error) {
+                            console.log('🔴 카카오페이 결제창 열기 실패:', error);
+                            window.paymentInProgress = false;
+                        }
                     } else if (paymentAccountRadio.checked) {
                         console.log('🔵 무통장입금 팝업 열기');
-                        openAccountPopup();
+                        try {
+                            openAccountPopup();
+                            // 팝업이 성공적으로 열렸는지 확인
+                            setTimeout(() => {
+                                if (!currentPaymentPopup || currentPaymentPopup.closed) {
+                                    console.log('🔴 무통장입금 팝업 열기 실패 또는 즉시 닫힘');
+                                    window.paymentInProgress = false;
+                                }
+                            }, 1000);
+                        } catch (error) {
+                            console.log('🔴 무통장입금 팝업 열기 실패:', error);
+                            window.paymentInProgress = false;
+                        }
                     }
                 } else {
                     console.log('❌ Payment 테이블 인서트 실패:', data.message);
@@ -506,6 +512,8 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => {
                 console.log('❌ Payment API 호출 중 오류:', error);
                 alert('결제 정보 저장 중 오류가 발생했습니다: ' + error.message);
+                // 결제 에러시에도 플래그는 유지 (다른 결제수단 시도 가능)
+                console.log('🔵 결제 에러 - paymentInProgress 유지하여 다른 결제수단 시도 가능');
             });
         } // processNewPayment 함수 종료
     });
@@ -548,10 +556,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     currentPaymentPopup = window.open(data.next_redirect_pc_url, 'kakaoPayPopup', `width=${width},height=${height},top=${top},left=${left}`);
 
+                    // 팝업이 제대로 열렸는지 확인
+                    if (!currentPaymentPopup || currentPaymentPopup.closed) {
+                        console.log('🔴 카카오페이 팝업 열기 실패');
+                        window.paymentInProgress = false;
+                        alert('팝업이 차단되었습니다. 팝업 차단을 해제하고 다시 시도해주세요.');
+                        return;
+                    }
+
+                    console.log('🔵 카카오페이 팝업 열기 성공');
+
                     // 수정: 팝업 닫힘 감지 및 결제 완료 처리 강화
                     let popupCheckInterval;
                     let paymentCompleted = false;
                     let messageHandlerAdded = false;
+                    let popupLoadDelay = false;
 
                     // 결제 성공 메시지 처리 - 수정됨
                     const handleKakaoPayMessage = (event) => {
@@ -591,8 +610,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             paymentCompleted = true;
                             clearInterval(popupCheckInterval);
 
-                            // 결제 취소 처리
-                            onPaymentFail();
+                            // 결제 취소 - 주문은 유지 (결제수단 변경 가능)
+                            console.log('🔵 카카오페이 취소 - 주문 상태 유지');
 
                             // 메시지 리스너 제거
                             window.removeEventListener('message', handleKakaoPayMessage);
@@ -604,8 +623,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             paymentCompleted = true;
                             clearInterval(popupCheckInterval);
 
-                            // 결제 실패 처리
-                            onPaymentFail();
+                            // 결제 실패 - 주문은 유지 (결제수단 변경 가능)  
+                            console.log('🔵 카카오페이 실패 - 주문 상태 유지');
 
                             // 메시지 리스너 제거
                             window.removeEventListener('message', handleKakaoPayMessage);
@@ -630,18 +649,16 @@ document.addEventListener('DOMContentLoaded', function () {
                                 messageHandlerAdded = false;
                             }
 
-                            // 1초 대기 후 결제 완료 확인
-                            setTimeout(() => {
-                                const orderCompleted = sessionStorage.getItem('orderCompleted');
-                                console.log('🔵 결제 완료 상태 확인:', orderCompleted);
-
-                                if (orderCompleted !== 'true' && !paymentCompleted) {
-                                    console.log('🔴 결제 미완료 상태로 팝업 닫힘 → 결제 실패 처리');
-                                    onPaymentFail();
-                                }
-                            }, 1000);
+                            // 팝업 닫힘은 더 이상 실패 처리하지 않음 (결제수단 변경 가능)
+                            console.log('🔵 카카오페이 팝업 닫힘 - 실패 처리하지 않음 (결제수단 변경 가능)');
                         }
                     };
+
+                    // 팝업 로딩 시간을 고려해서 3초 후부터 닫힘 감지 시작
+                    setTimeout(() => {
+                        popupLoadDelay = true;
+                        console.log('🔵 카카오페이 팝업 로딩 완료 - 닫힘 감지 시작');
+                    }, 3000);
 
                     popupCheckInterval = setInterval(checkClosed, 100); // 0.1초마다 체크
 
@@ -705,16 +722,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.log('🔴 무통장입금 팝업이 닫혔음');
                 clearInterval(popupCheckInterval);
 
-                // 0.5초 대기 후 결제 완료 확인
-                setTimeout(() => {
-                    const orderCompleted = sessionStorage.getItem('orderCompleted');
-                    console.log('🔵 결제 완료 상태 확인:', orderCompleted);
-
-                    if (orderCompleted !== 'true' && !paymentCompleted) {
-                        console.log('🔴 결제 미완료 상태로 팝업 닫힘 → 결제 실패 처리');
-                        onPaymentFail();
-                    }
-                }, 500);
+                // 팝업 닫힘은 더 이상 실패 처리하지 않음 (결제수단 변경 가능)
+                console.log('🔵 무통장입금 팝업 닫힘 - 실패 처리하지 않음 (결제수단 변경 가능)');
             }
         };
 
@@ -729,14 +738,25 @@ document.addEventListener('DOMContentLoaded', function () {
 // === 모든 이탈 상황에서 주문상태를 반드시 ORDER_FAILED로 변경 ===
 (function () {
     window.orderFailSent = false;
+    window.paymentInProgress = false; // 결제 진행 상태 플래그 추가
 
     function sendOrderFail() {
-        if (window.orderFailSent) return;
+        console.log('🔍 sendOrderFail 호출됨 - paymentInProgress:', window.paymentInProgress, 'orderFailSent:', window.orderFailSent);
+        console.trace('🔍 sendOrderFail 호출 스택 추적:'); // 어디서 호출했는지 스택 추적
+        if (window.orderFailSent || window.paymentInProgress) {
+            console.log('🔵 sendOrderFail 스킵 - 결제 진행 중이거나 이미 전송됨');
+            return; // 결제 진행 중일 때는 실행하지 않음
+        }
         const orderId = sessionStorage.getItem('orderId');
         const idForAdmin = sessionStorage.getItem('idForAdmin');
         const orderCompleted = sessionStorage.getItem('orderCompleted');
 
         if (orderId && idForAdmin && orderCompleted !== 'true') {
+            console.log('🔴 페이지 이탈 감지 - 주문/결제 실패 처리 시작');
+            
+            // 결제 진행 플래그 해제
+            window.paymentInProgress = false;
+            
             // 주문 상태 실패로 변경
             fetch('/api/order/update-status', {
                 method: 'POST',
@@ -749,7 +769,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 keepalive: true
             });
 
-            // 결제 상태도 함께 실패로 변경
+            // 결제 상태도 함께 실패로 변경 (하지만 백엔드에서 주문은 변경하지 않음)
             fetch('/api/payment/fail', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -760,6 +780,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             window.orderFailSent = true;
+            console.log('🔴 페이지 이탈로 인한 주문/결제 실패 처리 완료');
         }
     }
 
@@ -770,6 +791,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('a').forEach(a => {
         a.addEventListener('click', function (e) {
+            // 결제 관련 버튼이나 링크는 제외
+            if (this.id === 'paymentKakaoButton' || this.id === 'paymentAccountButton' || 
+                this.classList.contains('payment-btn') || this.closest('.payment-section')) {
+                console.log('🔵 결제 관련 버튼 클릭 - 이탈 감지 스킵');
+                return;
+            }
             sendOrderFail();
         });
     });
