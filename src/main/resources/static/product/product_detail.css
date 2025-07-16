@@ -27,24 +27,7 @@
     flex-direction: column;
     align-items: center;
 }
-.product-thumbnail {
-    width: 320px;
-    height: 440px;
-    border-radius: 12px;
-    overflow: hidden;
-    margin-bottom: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-left: 15px;
-    padding-top: 15px;
-}
-.product-thumbnail img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 12px;
-}
+
 .product-badges {
     display: flex;
     gap: 8px;
@@ -613,23 +596,33 @@
 
 .product-detail-container {
     display: flex;
-    gap: 110px;
+    gap: 50px;
     margin: 48px auto;
     max-width: 900px;
     align-items: flex-start;
     border-bottom: none;
 }
+/* 상품정보 섹션 - 이미지와 동일한 높이로 고정 */
 .product-info {
+    flex: 1; /* 나머지 공간 차지 */
+    min-height: 380px; /* 최소 높이만 설정 */
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
     align-items: flex-start;
+    /* overflow: hidden 제거 - 버튼들이 보이도록 */
 }
-.product-info h1 {
-    font-size: 2.2rem;
+
+.product-info h2 {
+    font-size: 1.8rem; /* 기본 크기, JS로 동적 조절 */
     font-weight: 700;
-    margin-bottom: 32px;
+    margin-bottom: 20px;
     text-align: left;
+    line-height: 1.3;
+    color: #222;
+    /* 말줄임표 제거하고 자연스럽게 줄바꿈 */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 .product-author, .product-publisher, .product-publish-date, .product-status {
     color: #444;
@@ -725,6 +718,19 @@
     cursor: pointer;
     color: #000000;
     transition: color 0.2s;
+}
+
+/* 이미지 섹션 - 고정 크기 독립 섹션 (상품 상세 페이지만) */
+.product-detail-container .product-thumbnail {
+    flex: 0 0 300px; /* 고정 너비 */
+    width: 100%;
+    height: 100%; /* 고정 높이 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .product-thumbnail img {
