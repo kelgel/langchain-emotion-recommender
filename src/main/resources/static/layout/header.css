@@ -37,7 +37,7 @@
 /* 상단 라인: 로고 + 검색 + 사용자메뉴 */
 .header-top-line {
     display: flex;
-    height: 80px;
+    height: 100px;
     align-items: center;
     gap: 30px;
     margin-bottom: 0;
@@ -46,6 +46,8 @@
 /* 로고 */
 .logo {
     flex-shrink: 0;
+    height: 100px;
+    width: 100px;
 }
 
 .logo img {
