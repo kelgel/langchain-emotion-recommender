@@ -536,7 +536,7 @@ document.addEventListener('DOMContentLoaded', function() {
             html += `
                 <div class="product-row">
                     <div class="col-info">
-                        <img src="${product.img || '/layout/YESorNO.24_이미지.png'}" 
+                        <img src="${product.img || '/layout/책크인_이미지.png'}" 
                              alt="${product.productName}" class="product-img">
                         <div class="product-info">
                             <div class="product-title">${product.productName}</div>
