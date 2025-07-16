@@ -117,7 +117,7 @@
                         th:class="${i == currentReviewPage ? 'pagination-btn current' : 'pagination-btn'}"
                         th:attr="data-page=${i}"
                         th:text="${i+1}"
-                        onclick="navigateToReviewPage(this)">
+                        th:onclick="'navigateToReviewPageDirect(' + ${i} + ')'">
                 </button>
             </div>
         </div>

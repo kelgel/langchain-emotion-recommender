@@ -623,7 +623,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert('주문내역을 불러오지 못했습니다.');
                     return;
                 }
-                const pageSize = 5;
+                const pageSize = 10;
                 const totalPages = Math.ceil(orders.length / pageSize);
                 const currentPage = Math.max(1, Math.min(page, totalPages));
                 const startIdx = (currentPage - 1) * pageSize;
@@ -834,24 +834,102 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         });
                     });
-                    // 페이지네이션 버튼 추가
+                    // 페이지네이션 버튼 추가 - 개선된 그룹화 방식
                     const paginationContainer = document.createElement('div');
                     paginationContainer.className = 'pagination-container';
                     if (totalPages > 1) {
                         const btns = document.createElement('div');
                         btns.className = 'pagination-btns';
-                        for (let i = 1; i <= totalPages; i++) {
-                            const btn = document.createElement('button');
-                            btn.type = 'button';
-                            btn.className = (i === currentPage) ? 'pagination-btn current' : 'pagination-btn';
-                            btn.setAttribute('data-page', i);
-                            btn.textContent = i;
-                            btn.addEventListener('click', function() {
-                                loadOrderHistory(i);
-                                window.scrollTo({top: 0, behavior: 'smooth'});
-                            });
-                            btns.appendChild(btn);
+                        
+                        // 10개 이하면 기존 방식
+                        if (totalPages <= 10) {
+                            for (let i = 1; i <= totalPages; i++) {
+                                const btn = document.createElement('button');
+                                btn.type = 'button';
+                                btn.className = (i === currentPage) ? 'pagination-btn current' : 'pagination-btn';
+                                btn.setAttribute('data-page', i);
+                                btn.textContent = i;
+                                btn.addEventListener('click', function() {
+                                    loadOrderHistory(i);
+                                    window.scrollTo({top: 0, behavior: 'smooth'});
+                                });
+                                btns.appendChild(btn);
+                            }
+                        } else {
+                            // 10개 초과시 그룹화 방식
+                            const currentGroup = Math.ceil(currentPage / 10);
+                            const startPage = (currentGroup - 1) * 10 + 1;
+                            const endPage = Math.min(currentGroup * 10, totalPages);
+                            
+                            // 처음 버튼 (2그룹 이상일 때)
+                            if (currentGroup > 1) {
+                                const firstBtn = document.createElement('button');
+                                firstBtn.type = 'button';
+                                firstBtn.className = 'pagination-btn first-btn';
+                                firstBtn.textContent = '처음';
+                                firstBtn.addEventListener('click', function() {
+                                    loadOrderHistory(1);
+                                    window.scrollTo({top: 0, behavior: 'smooth'});
+                                });
+                                btns.appendChild(firstBtn);
+                            }
+                            
+                            // 이전 그룹 버튼 (2그룹 이상일 때)
+                            if (currentGroup > 1) {
+                                const prevBtn = document.createElement('button');
+                                prevBtn.type = 'button';
+                                prevBtn.className = 'pagination-btn prev-group-btn';
+                                prevBtn.textContent = '이전';
+                                const prevGroupLastPage = startPage - 1;
+                                prevBtn.addEventListener('click', function() {
+                                    loadOrderHistory(prevGroupLastPage);
+                                    window.scrollTo({top: 0, behavior: 'smooth'});
+                                });
+                                btns.appendChild(prevBtn);
+                            }
+                            
+                            // 현재 그룹의 페이지 번호들
+                            for (let i = startPage; i <= endPage; i++) {
+                                const btn = document.createElement('button');
+                                btn.type = 'button';
+                                btn.className = (i === currentPage) ? 'pagination-btn current' : 'pagination-btn';
+                                btn.setAttribute('data-page', i);
+                                btn.textContent = i;
+                                btn.addEventListener('click', function() {
+                                    loadOrderHistory(i);
+                                    window.scrollTo({top: 0, behavior: 'smooth'});
+                                });
+                                btns.appendChild(btn);
+                            }
+                            
+                            // 다음 그룹 버튼 (마지막 그룹이 아닐 때)
+                            if (endPage < totalPages) {
+                                const nextBtn = document.createElement('button');
+                                nextBtn.type = 'button';
+                                nextBtn.className = 'pagination-btn next-group-btn';
+                                nextBtn.textContent = '다음';
+                                const nextGroupFirstPage = endPage + 1;
+                                nextBtn.addEventListener('click', function() {
+                                    loadOrderHistory(nextGroupFirstPage);
+                                    window.scrollTo({top: 0, behavior: 'smooth'});
+                                });
+                                btns.appendChild(nextBtn);
+                            }
+                            
+                            // 끝 버튼 (마지막 그룹이 아닐 때)
+                            if (endPage < totalPages) {
+                                const lastBtn = document.createElement('button');
+                                lastBtn.type = 'button';
+                                lastBtn.className = 'pagination-btn last-btn';
+                                lastBtn.textContent = '끝';
+                                lastBtn.addEventListener('click', function() {
+                                    loadOrderHistory(totalPages);
+                                    window.scrollTo({top: 0, behavior: 'smooth'});
+                                });
+                                btns.appendChild(lastBtn);
+                            }
                         }
+                        
                         paginationContainer.appendChild(btns);
                         orderList.appendChild(paginationContainer);
                     }

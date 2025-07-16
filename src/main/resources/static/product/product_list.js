@@ -1,5 +1,63 @@
 // 상품목록 페이지 JavaScript
 
+// 페이지네이션 개선 함수
+function improvePagination() {
+    const paginationContainer = document.querySelector('.pagination-container');
+    if (!paginationContainer) return;
+    
+    const paginationBtns = paginationContainer.querySelector('.pagination-btns');
+    if (!paginationBtns) return;
+    
+    const allBtns = Array.from(paginationBtns.querySelectorAll('.pagination-btn'));
+    if (allBtns.length <= 10) return; // 10개 이하면 그룹화 불필요
+    
+    // 현재 페이지 찾기
+    const currentBtn = allBtns.find(btn => btn.classList.contains('current'));
+    if (!currentBtn) return;
+    
+    const currentPage = parseInt(currentBtn.getAttribute('data-page'));
+    const totalPages = allBtns.length;
+    
+    // 현재 그룹 계산 (1~10, 11~20, ...)
+    const currentGroup = Math.ceil(currentPage / 10);
+    const startPage = (currentGroup - 1) * 10 + 1;
+    const endPage = Math.min(currentGroup * 10, totalPages);
+    
+    // 새로운 HTML 구성
+    let newHTML = '';
+    
+    // 처음 버튼 (2그룹 이상일 때)
+    if (currentGroup > 1) {
+        newHTML += `<button type="button" class="pagination-btn first-btn" data-page="1">처음</button>`;
+    }
+    
+    // 이전 그룹 버튼 (2그룹 이상일 때)
+    if (currentGroup > 1) {
+        const prevGroupLastPage = startPage - 1;
+        newHTML += `<button type="button" class="pagination-btn prev-group-btn" data-page="${prevGroupLastPage}">이전</button>`;
+    }
+    
+    // 현재 그룹의 페이지 번호들
+    for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === currentPage ? ' current' : '';
+        newHTML += `<button type="button" class="pagination-btn${isActive}" data-page="${i}">${i}</button>`;
+    }
+    
+    // 다음 그룹 버튼 (마지막 그룹이 아닐 때)
+    if (endPage < totalPages) {
+        const nextGroupFirstPage = endPage + 1;
+        newHTML += `<button type="button" class="pagination-btn next-group-btn" data-page="${nextGroupFirstPage}">다음</button>`;
+    }
+    
+    // 끝 버튼 (마지막 그룹이 아닐 때)
+    if (endPage < totalPages) {
+        newHTML += `<button type="button" class="pagination-btn last-btn" data-page="${totalPages}">끝</button>`;
+    }
+    
+    // HTML 교체
+    paginationBtns.innerHTML = newHTML;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // 체크박스 전체선택/해제
     const selectAllCheckbox = document.getElementById('selectAllCheckbox');
@@ -19,16 +77,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // 선택상품 장바구니 버튼
     const addToCartBtn = document.getElementById('addToCartBtn');
     if (addToCartBtn) {
-        // 1. 페이지네이션 버튼 클릭 시 이동
-        document.querySelectorAll('.pagination-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const page = this.getAttribute('data-page');
+        // 1. 페이지네이션 그룹화 처리
+        improvePagination();
+        
+        // 2. 페이지네이션 버튼 클릭 시 이동
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('pagination-btn')) {
+                const page = e.target.getAttribute('data-page');
                 if (page) {
                     const currentUrl = new URL(window.location);
                     currentUrl.searchParams.set('page', page);
                     window.location.href = currentUrl.toString();
                 }
-            });
+            }
         });
 
         // 로그인 체크 함수 (상세/목록 공통)
@@ -146,7 +207,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const productImages = document.querySelectorAll('.book-image');
     productImages.forEach(function(img) {
         img.addEventListener('error', function() {
-            this.src = '/layout/YESorNO.24_이미지.png';
+            this.src = '/layout/책크인_이미지.png';
             this.alt = '이미지를 불러올 수 없습니다';
         });
     });

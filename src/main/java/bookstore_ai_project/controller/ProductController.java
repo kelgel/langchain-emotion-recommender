@@ -79,7 +79,7 @@ public class ProductController {
         model.addAttribute("salesStatusKor", salesStatusKor);
 
         // 리뷰 리스트 (최신순, soft delete 제외, 5개씩 페이지네이션, 닉네임 포함)
-        int pageSize = 5;
+        int pageSize = 10;
         var reviewData = productService.getProductReviewsWithNicknameByIsbnPaged(isbn, page, pageSize);
         model.addAttribute("reviewsWithNickname", reviewData.get("reviews"));
         model.addAttribute("currentReviewPage", page);
@@ -92,8 +92,10 @@ public class ProductController {
 
     // (추가) QueryString 방식도 지원
     @GetMapping("/detail")
-    public String productDetailQuery(@RequestParam("isbn") String isbn, Model model) {
-        return productDetail(isbn, 0, model); // Default page to 0 for query string
+    public String productDetailQuery(@RequestParam("isbn") String isbn,
+                                     @RequestParam(value = "page", defaultValue = "0") int page,
+                                     Model model) {
+        return productDetail(isbn, page, model); // page 파라미터 반영
     }
 
     // 카테고리별 상품 목록 페이지

@@ -586,7 +586,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // 페이징 렌더링 - 모든 페이지 번호 표시
+    // 페이징 렌더링 - 개선된 그룹화 페이지네이션
     function renderPagination(data) {
         if (!paginationBtns) return;
 
@@ -597,15 +597,56 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        let html = '';
+        // 10개 이하면 기존 방식
+        if (totalPages <= 10) {
+            let html = '';
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === page) {
+                    html += `<button class="pagination-btn current">${i}</button>`;
+                } else {
+                    html += `<button class="pagination-btn" onclick="goToPage(${i})">${i}</button>`;
+                }
+            }
+            paginationBtns.innerHTML = html;
+            return;
+        }
 
-        // 모든 페이지 번호 표시
-        for (let i = 1; i <= totalPages; i++) {
+        // 10개 초과시 그룹화 방식
+        const currentGroup = Math.ceil(page / 10);
+        const startPage = (currentGroup - 1) * 10 + 1;
+        const endPage = Math.min(currentGroup * 10, totalPages);
+        
+        let html = '';
+        
+        // 처음 버튼 (2그룹 이상일 때)
+        if (currentGroup > 1) {
+            html += `<button class="pagination-btn first-btn" onclick="goToPage(1)">처음</button>`;
+        }
+        
+        // 이전 그룹 버튼 (2그룹 이상일 때)
+        if (currentGroup > 1) {
+            const prevGroupLastPage = startPage - 1;
+            html += `<button class="pagination-btn prev-group-btn" onclick="goToPage(${prevGroupLastPage})">이전</button>`;
+        }
+        
+        // 현재 그룹의 페이지 번호들
+        for (let i = startPage; i <= endPage; i++) {
             if (i === page) {
                 html += `<button class="pagination-btn current">${i}</button>`;
             } else {
                 html += `<button class="pagination-btn" onclick="goToPage(${i})">${i}</button>`;
             }
+        }
+        
+        // 다음 그룹 버튼 (마지막 그룹이 아닐 때)
+        if (endPage < totalPages) {
+            const nextGroupFirstPage = endPage + 1;
+            html += `<button class="pagination-btn next-group-btn" onclick="goToPage(${nextGroupFirstPage})">다음</button>`;
+        }
+        
+        // 끝 버튼 (마지막 그룹이 아닐 때)
+        if (endPage < totalPages) {
+            html += `<button class="pagination-btn last-btn" onclick="goToPage(${totalPages})">끝</button>`;
         }
 
         paginationBtns.innerHTML = html;

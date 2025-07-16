@@ -12,8 +12,81 @@ function getProductIdFromUrl() {
     return pathSegments[pathSegments.length - 1];
 }
 
+// 리뷰 페이지네이션 개선 함수
+function improveReviewPagination() {
+    const paginationContainer = document.querySelector('.review-section .pagination-container');
+    if (!paginationContainer) return;
+    
+    const paginationBtns = paginationContainer.querySelector('.pagination-btns');
+    if (!paginationBtns) return;
+    
+    const allBtns = Array.from(paginationBtns.querySelectorAll('.pagination-btn'));
+    if (allBtns.length <= 10) return; // 10개 이하면 그룹화 불필요
+    
+    // 현재 페이지 찾기 (0-based)
+    const currentBtn = allBtns.find(btn => btn.classList.contains('current'));
+    if (!currentBtn) return;
+    
+    const currentPageZeroBased = parseInt(currentBtn.getAttribute('data-page'));
+    const currentPage = currentPageZeroBased + 1; // 1-based로 변환
+    const totalPages = allBtns.length;
+    
+    // 현재 그룹 계산 (1~10, 11~20, ...)
+    const currentGroup = Math.ceil(currentPage / 10);
+    const startPage = (currentGroup - 1) * 10 + 1;
+    const endPage = Math.min(currentGroup * 10, totalPages);
+    
+    // 새로운 HTML 구성
+    let newHTML = '';
+    
+    // 처음 버튼 (2그룹 이상일 때)
+    if (currentGroup > 1) {
+        newHTML += `<button type="button" class="pagination-btn first-btn" onclick="navigateToReviewPageDirect(0)">처음</button>`;
+    }
+    
+    // 이전 그룹 버튼 (2그룹 이상일 때)
+    if (currentGroup > 1) {
+        const prevGroupLastPage = startPage - 2; // 0-based로 변환
+        newHTML += `<button type="button" class="pagination-btn prev-group-btn" onclick="navigateToReviewPageDirect(${prevGroupLastPage})">이전</button>`;
+    }
+    
+    // 현재 그룹의 페이지 번호들
+    for (let i = startPage; i <= endPage; i++) {
+        const zeroBased = i - 1; // 0-based로 변환
+        const isActive = i === currentPage ? ' current' : '';
+        newHTML += `<button type="button" class="pagination-btn${isActive}" data-page="${zeroBased}" onclick="navigateToReviewPageDirect(${zeroBased})">${i}</button>`;
+    }
+    
+    // 다음 그룹 버튼 (마지막 그룹이 아닐 때)
+    if (endPage < totalPages) {
+        const nextGroupFirstPage = endPage; // 0-based로 변환
+        newHTML += `<button type="button" class="pagination-btn next-group-btn" onclick="navigateToReviewPageDirect(${nextGroupFirstPage})">다음</button>`;
+    }
+    
+    // 끝 버튼 (마지막 그룹이 아닐 때)
+    if (endPage < totalPages) {
+        const lastPageZeroBased = totalPages - 1; // 0-based로 변환
+        newHTML += `<button type="button" class="pagination-btn last-btn" onclick="navigateToReviewPageDirect(${lastPageZeroBased})">끝</button>`;
+    }
+    
+    // HTML 교체
+    paginationBtns.innerHTML = newHTML;
+}
+
+// 리뷰 페이지 이동 함수
+function navigateToReviewPageDirect(page) {
+    const currentScrollY = window.scrollY;
+    sessionStorage.setItem('reviewScrollPosition', currentScrollY.toString());
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('page', page);
+    window.location.href = currentUrl.toString();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const productId = getProductIdFromUrl();
+    
+    // 리뷰 페이지네이션 개선
+    improveReviewPagination();
     
     // 로그인 체크 함수
     function isLoggedIn() {

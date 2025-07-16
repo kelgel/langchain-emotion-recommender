@@ -15,10 +15,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let cartData = [];
     let currentPage = 1;
     const itemsPerPage = 10;
-    
+
     // 재고량 캐시 (ISBN별로 저장)
     let stockCache = new Map(); // ISBN -> {stock: number, lastUpdated: timestamp}
-    
+
     // 재고량 캐시에서 가져오기
     function getCachedStock(isbn) {
         const cached = stockCache.get(isbn);
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return null;
     }
-    
+
     // 재고량 캐시에 저장
     function setCachedStock(isbn, stock) {
         stockCache.set(isbn, {
@@ -35,14 +35,14 @@ document.addEventListener('DOMContentLoaded', function() {
             lastUpdated: Date.now()
         });
     }
-    
+
     // 재고량 로드 (캐시 확인 후 필요시만 API 호출)
     function loadStock(isbn) {
         const cached = getCachedStock(isbn);
         if (cached !== null) {
             return Promise.resolve(cached);
         }
-        
+
         return fetch(`/cart/api/stock/${isbn}`)
             .then(res => res.json())
             .then(data => {
@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return 0;
             });
     }
-    
+
     // 모든 장바구니 상품의 재고량 미리 로드
     function preloadAllStocks() {
         const isbns = cartData.map(item => item.isbn);
@@ -126,9 +126,8 @@ document.addEventListener('DOMContentLoaded', function() {
         bindCartEvents();
     }
 
-    // 3. 페이징 렌더링
+    // 상품목록과 동일한 페이지네이션 렌더링 함수
     function renderPaging() {
-        // 기존 페이징 영역 제거
         let oldPaging = document.getElementById('cartPaging');
         if (oldPaging) oldPaging.remove();
         const totalItems = cartData.length;
@@ -136,18 +135,48 @@ document.addEventListener('DOMContentLoaded', function() {
         if (totalPages <= 1) return;
         const pagingDiv = document.createElement('div');
         pagingDiv.id = 'cartPaging';
-        pagingDiv.className = 'cart-pagination';
-        for (let i = 1; i <= totalPages; i++) {
-            const btn = document.createElement('button');
-            btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
-            btn.textContent = i;
-            btn.onclick = function() {
-                currentPage = i;
-                renderCartPage(currentPage);
-                updateSummary();
-            };
-            pagingDiv.appendChild(btn);
+        pagingDiv.className = 'pagination-container';
+        const btnsDiv = document.createElement('div');
+        btnsDiv.className = 'pagination-btns';
+        // 그룹화 계산 (1~10, 11~20)
+        const currentGroup = Math.ceil(currentPage / 10);
+        const startPage = (currentGroup - 1) * 10 + 1;
+        const endPage = Math.min(currentGroup * 10, totalPages);
+        // 처음/이전 그룹
+        if (currentGroup > 1) {
+            const firstBtn = document.createElement('button');
+            firstBtn.className = 'pagination-btn first-btn';
+            firstBtn.textContent = '처음';
+            firstBtn.onclick = () => { currentPage = 1; renderCartPage(currentPage); updateSummary(); };
+            btnsDiv.appendChild(firstBtn);
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'pagination-btn prev-group-btn';
+            prevBtn.textContent = '이전';
+            prevBtn.onclick = () => { currentPage = startPage - 1; renderCartPage(currentPage); updateSummary(); };
+            btnsDiv.appendChild(prevBtn);
         }
+        // 페이지 번호
+        for (let i = startPage; i <= endPage; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'pagination-btn' + (i === currentPage ? ' current' : '');
+            btn.textContent = i;
+            btn.onclick = () => { currentPage = i; renderCartPage(currentPage); updateSummary(); };
+            btnsDiv.appendChild(btn);
+        }
+        // 다음/끝 그룹
+        if (endPage < totalPages) {
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'pagination-btn next-group-btn';
+            nextBtn.textContent = '다음';
+            nextBtn.onclick = () => { currentPage = endPage + 1; renderCartPage(currentPage); updateSummary(); };
+            btnsDiv.appendChild(nextBtn);
+            const lastBtn = document.createElement('button');
+            lastBtn.className = 'pagination-btn last-btn';
+            lastBtn.textContent = '끝';
+            lastBtn.onclick = () => { currentPage = totalPages; renderCartPage(currentPage); updateSummary(); };
+            btnsDiv.appendChild(lastBtn);
+        }
+        pagingDiv.appendChild(btnsDiv);
         // 테이블 섹션 하단에 붙이기
         const tableSection = document.querySelector('.cart-table-section');
         tableSection.appendChild(pagingDiv);
@@ -183,7 +212,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const isbn = input.dataset.isbn;
                 let currentQty = parseInt(input.value) || 1;
                 let newQty = currentQty + 1;
-                
+
                 // 캐시된 재고량으로 즉시 검증
                 const cachedStock = getCachedStock(isbn);
                 if (cachedStock !== null) {
@@ -210,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const isbn = this.dataset.isbn;
                 let v = parseInt(this.value) || 1;
                 if (v < 1) v = 1;
-                
+
                 // 캐시된 재고량으로 즉시 검증
                 const cachedStock = getCachedStock(isbn);
                 if (cachedStock !== null) {
@@ -237,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const isbn = this.dataset.isbn;
                 const input = document.querySelector(`.qty-input[data-isbn="${isbn}"]`);
                 const qty = parseInt(input.value) || 1;
-                
+
                 // 캐시된 재고량으로 체크
                 const cachedStock = getCachedStock(isbn);
                 const checkStockAndUpdate = (stock) => {
@@ -252,17 +281,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: `isbn=${encodeURIComponent(isbn)}&quantity=${encodeURIComponent(qty)}`
                     })
-                    .then(res => res.text())
-                    .then(data => {
-                        if (data === 'OK') {
-                            alert('수정되었습니다.');
-                            fetchCartList();
-                        } else {
-                            alert(data);
-                        }
-                    });
+                        .then(res => res.text())
+                        .then(data => {
+                            if (data === 'OK') {
+                                alert('수정되었습니다.');
+                                fetchCartList();
+                            } else {
+                                alert(data);
+                            }
+                        });
                 };
-                
+
                 if (cachedStock !== null) {
                     checkStockAndUpdate(cachedStock);
                 } else {
@@ -281,14 +310,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: `isbn=${encodeURIComponent(isbn)}`
                 })
-                .then(res => res.text())
-                .then(data => {
-                    if (data === 'OK') {
-                        fetchCartList();
-                    } else {
-                        alert(data);
-                    }
-                });
+                    .then(res => res.text())
+                    .then(data => {
+                        if (data === 'OK') {
+                            fetchCartList();
+                        } else {
+                            alert(data);
+                        }
+                    });
             };
         });
         // 선택삭제

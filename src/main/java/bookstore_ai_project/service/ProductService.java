@@ -104,6 +104,7 @@ public class ProductService {
 
     // 상품 리뷰 리스트 조회 (최신순, soft delete 제외, 페이지네이션, 닉네임 포함)
     public java.util.Map<String, Object> getProductReviewsWithNicknameByIsbnPaged(String isbn, int page, int size) {
+        if (size <= 0) size = 10;
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
         var reviewsWithNickname = productReviewRepository.findByIsbnWithUserNicknameAndDeleteDateIsNull(isbn, pageable);
         

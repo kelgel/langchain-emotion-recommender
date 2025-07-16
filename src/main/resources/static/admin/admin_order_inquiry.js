@@ -348,18 +348,25 @@ document.addEventListener('DOMContentLoaded', function() {
             paginationBtns.innerHTML = '';
             return;
         }
-
         let paginationHtml = '';
-
-        // 페이지 번호들만 표시
-        const startPage = Math.max(1, current - 2);
-        const endPage = Math.min(totalPages, current + 2);
-
+        const currentGroup = Math.ceil(current / 10);
+        const startPage = (currentGroup - 1) * 10 + 1;
+        const endPage = Math.min(currentGroup * 10, totalPages);
+        // 처음/이전 그룹
+        if (currentGroup > 1) {
+            paginationHtml += `<button class="pagination-btn first-btn" onclick="changePage(1)">처음</button>`;
+            paginationHtml += `<button class="pagination-btn prev-group-btn" onclick="changePage(${startPage - 1})">이전</button>`;
+        }
+        // 페이지 번호
         for (let i = startPage; i <= endPage; i++) {
             const activeClass = i === current ? 'current' : '';
             paginationHtml += `<button class="pagination-btn ${activeClass}" onclick="changePage(${i})">${i}</button>`;
         }
-
+        // 다음/끝 그룹
+        if (endPage < totalPages) {
+            paginationHtml += `<button class="pagination-btn next-group-btn" onclick="changePage(${endPage + 1})">다음</button>`;
+            paginationHtml += `<button class="pagination-btn last-btn" onclick="changePage(${totalPages})">끝</button>`;
+        }
         paginationBtns.innerHTML = paginationHtml;
     }
 
