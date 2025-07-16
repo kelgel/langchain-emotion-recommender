@@ -651,6 +651,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                             // 팝업 닫힘은 더 이상 실패 처리하지 않음 (결제수단 변경 가능)
                             console.log('🔵 카카오페이 팝업 닫힘 - 실패 처리하지 않음 (결제수단 변경 가능)');
+                            
+                            // paymentInProgress 플래그 리셋
+                            window.paymentInProgress = false;
+                            console.log('🔵 카카오페이 팝업 닫힘 - paymentInProgress = false');
                         }
                     };
 
@@ -724,6 +728,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // 팝업 닫힘은 더 이상 실패 처리하지 않음 (결제수단 변경 가능)
                 console.log('🔵 무통장입금 팝업 닫힘 - 실패 처리하지 않음 (결제수단 변경 가능)');
+                
+                // paymentInProgress 플래그 리셋
+                window.paymentInProgress = false;
+                console.log('🔵 무통장입금 팝업 닫힘 - paymentInProgress = false');
             }
         };
 
@@ -748,39 +756,34 @@ document.addEventListener('DOMContentLoaded', function () {
             return; // 결제 진행 중일 때는 실행하지 않음
         }
         const orderId = sessionStorage.getItem('orderId');
-        const idForAdmin = sessionStorage.getItem('idForAdmin');
         const orderCompleted = sessionStorage.getItem('orderCompleted');
 
-        if (orderId && idForAdmin && orderCompleted !== 'true') {
-            console.log('🔴 페이지 이탈 감지 - 주문/결제 실패 처리 시작');
+        if (orderId && orderCompleted !== 'true') {
+            console.log('🔴 페이지 이탈 감지 - 주문 취소 처리 시작');
             
             // 결제 진행 플래그 해제
             window.paymentInProgress = false;
             
-            // 주문 상태 실패로 변경
-            fetch('/api/order/update-status', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    orderId: orderId,
-                    idForAdmin: idForAdmin,
-                    status: 'ORDER_FAILED'
-                }),
-                keepalive: true
-            });
-
-            // 결제 상태도 함께 실패로 변경 (하지만 백엔드에서 주문은 변경하지 않음)
-            fetch('/api/payment/fail', {
+            // 주문 취소 API 호출
+            fetch('/api/order/cancel', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     orderId: orderId
                 }),
                 keepalive: true
+            }).then(response => {
+                if (response.ok) {
+                    console.log('🔴 주문 취소 처리 완료');
+                } else {
+                    console.log('🔴 주문 취소 처리 실패:', response.status);
+                }
+            }).catch(error => {
+                console.log('🔴 주문 취소 API 호출 중 오류:', error);
             });
 
             window.orderFailSent = true;
-            console.log('🔴 페이지 이탈로 인한 주문/결제 실패 처리 완료');
+            console.log('🔴 페이지 이탈로 인한 주문 취소 처리 완료');
         }
     }
 

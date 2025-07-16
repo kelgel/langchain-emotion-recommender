@@ -13,15 +13,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor        // 모든 필드 생성자
 public class Payment {
 
-    @Id                                              // 기본키 지정
-    @Column(name = "payment_id")                     // DB 컬럼명과 길이 지정
-    private String paymentId;
-
-    @Column(name = "order_id")
-    private String orderId;
-
-    @Column(name = "id_for_admin")
-    private String idForAdmin;
+    @EmbeddedId
+    private PaymentId id;
 
     @Column(name = "payment_method_id")
     private String paymentMethodId;

@@ -262,6 +262,21 @@ public class OrderController {
             orderRepository.save(order);
             System.out.println("[DEBUG] order status updated: " + order.getOrderStatus());
             
+            // ORDER_FAILED 상태로 변경 시 관련 Payment들도 FAILED로 변경
+            if (newStatus == Order.OrderStatus.ORDER_FAILED) {
+                List<Payment> payments = paymentRepository.findByIdOrderIdAndIdIdForAdmin(orderId, idForAdmin);
+                System.out.println("[DEBUG] ORDER_FAILED 처리 - 관련 Payment 개수: " + payments.size());
+                
+                for (Payment payment : payments) {
+                    if (payment.getPaymentStatus() == Payment.PaymentStatus.PAYMENT_ATTEMPT) {
+                        payment.setPaymentStatus(Payment.PaymentStatus.PAYMENT_FAILED);
+                        payment.setUpdateDate(LocalDateTime.now());
+                        paymentRepository.save(payment);
+                        System.out.println("[DEBUG] Payment 상태 FAILED로 변경: " + payment.getId().getPaymentId());
+                    }
+                }
+            }
+            
             // PREPARING_PRODUCT 상태로 변경 시 Stock OUTBOUND 기록 추가
             if (newStatus == Order.OrderStatus.PREPARING_PRODUCT) {
                 try {
@@ -355,10 +370,10 @@ public class OrderController {
 
             // 5. PaymentId 중복 체크
             System.out.println("🔵 PaymentId 중복 체크 시작: " + paymentId);
-            List<Payment> existingPayments = paymentRepository.findByPaymentId(paymentId);
-            System.out.println("🔵 기존 Payment 개수: " + existingPayments.size());
+            Optional<Payment> existingPayment = paymentRepository.findByIdPaymentIdAndIdOrderIdAndIdIdForAdmin(paymentId, orderId, idForAdmin);
+            System.out.println("🔵 기존 Payment 존재 여부: " + existingPayment.isPresent());
 
-            if (!existingPayments.isEmpty()) {
+            if (existingPayment.isPresent()) {
                 System.out.println("❌ 이미 존재하는 paymentId: " + paymentId);
                 result.put("success", false);
                 result.put("message", "이미 존재하는 결제번호입니다.");
@@ -378,12 +393,23 @@ public class OrderController {
             Order order = orderOpt.get();
             System.out.println("🔵 주문 찾음: " + order.getOrderId() + " (상태: " + order.getOrderStatus() + ")");
 
-            // 7. Payment 엔티티 생성
-            System.out.println("🔵 Payment 엔티티 생성 시작");
+            // 7. 기존 PAYMENT_ATTEMPT 상태 결제건들을 FAILED로 변경
+            System.out.println("🔵 기존 결제 시도 건들 실패 처리 시작");
+            List<Payment> existingAttempts = paymentRepository.findByIdOrderIdAndIdIdForAdmin(orderId, idForAdmin);
+            for (Payment attemptPayment : existingAttempts) {
+                if (attemptPayment.getPaymentStatus() == Payment.PaymentStatus.PAYMENT_ATTEMPT) {
+                    attemptPayment.setPaymentStatus(Payment.PaymentStatus.PAYMENT_FAILED);
+                    attemptPayment.setUpdateDate(LocalDateTime.now());
+                    paymentRepository.save(attemptPayment);
+                    System.out.println("🔵 기존 결제 시도 실패 처리: " + attemptPayment.getId().getPaymentId());
+                }
+            }
+
+            // 8. 새로운 Payment 엔티티 생성
+            System.out.println("🔵 새로운 Payment 엔티티 생성 시작");
             Payment payment = new Payment();
-            payment.setPaymentId(paymentId);
-            payment.setOrderId(orderId);
-            payment.setIdForAdmin(idForAdmin);
+            PaymentId paymentIdObj = new PaymentId(paymentId, orderId, idForAdmin);
+            payment.setId(paymentIdObj);
             payment.setPaymentMethodId(paymentMethod);
             payment.setPaymentStatus(Payment.PaymentStatus.PAYMENT_ATTEMPT);
 
@@ -408,26 +434,26 @@ public class OrderController {
 
             payment.setPaymentDate(paymentDate);
 
-            // 8. DB 저장
+            // 9. DB 저장
             System.out.println("🔵 Payment DB 저장 시작...");
             Payment savedPayment = paymentRepository.save(payment);
             System.out.println("✅ Payment DB 저장 완료!");
-            System.out.println("✅ 저장된 Payment ID: " + savedPayment.getPaymentId());
+            System.out.println("✅ 저장된 Payment ID: " + savedPayment.getId().getPaymentId());
             System.out.println("✅ 저장된 Payment 상태: " + savedPayment.getPaymentStatus());
 
-            // 9. 저장 검증
+            // 10. 저장 검증
             System.out.println("🔵 저장 검증 시작...");
-            List<Payment> verifyPayments = paymentRepository.findByOrderId(orderId);
+            List<Payment> verifyPayments = paymentRepository.findByIdOrderId(orderId);
             System.out.println("🔵 해당 주문의 총 Payment 개수: " + verifyPayments.size());
 
             for (Payment p : verifyPayments) {
-                System.out.println("  - Payment: " + p.getPaymentId() + " (상태: " + p.getPaymentStatus() + ")");
+                System.out.println("  - Payment: " + p.getId().getPaymentId() + " (상태: " + p.getPaymentStatus() + ")");
             }
 
-            // 10. 성공 응답
+            // 11. 성공 응답
             result.put("success", true);
             result.put("message", "결제 시도 기록이 저장되었습니다.");
-            result.put("paymentId", savedPayment.getPaymentId());
+            result.put("paymentId", savedPayment.getId().getPaymentId());
             result.put("paymentStatus", savedPayment.getPaymentStatus().toString());
 
             System.out.println("✅ API 처리 성공!");
@@ -475,7 +501,7 @@ public class OrderController {
             }
 
             // 해당 주문의 모든 payment 상태를 COMPLETED로 변경
-            List<Payment> payments = paymentRepository.findByOrderIdAndIdForAdmin(orderId, idForAdmin);
+            List<Payment> payments = paymentRepository.findByIdOrderIdAndIdIdForAdmin(orderId, idForAdmin);
             System.out.println("[DEBUG] 찾은 payment 개수: " + payments.size());
 
             for (Payment payment : payments) {
@@ -484,7 +510,7 @@ public class OrderController {
                     payment.setPaymentStatus(Payment.PaymentStatus.PAYMENT_COMPLETED);
                     payment.setUpdateDate(LocalDateTime.now());
                     paymentRepository.save(payment);
-                    System.out.println("[DEBUG] Payment 완료 처리: " + payment.getPaymentId());
+                    System.out.println("[DEBUG] Payment 완료 처리: " + payment.getId().getPaymentId());
                 }
             }
 
@@ -553,7 +579,7 @@ public class OrderController {
             }
 
             // 해당 주문의 모든 payment 상태를 FAILED로 변경
-            List<Payment> payments = paymentRepository.findByOrderIdAndIdForAdmin(orderId, idForAdmin);
+            List<Payment> payments = paymentRepository.findByIdOrderIdAndIdIdForAdmin(orderId, idForAdmin);
             System.out.println("[DEBUG] 찾은 payment 개수: " + payments.size());
 
             for (Payment payment : payments) {
@@ -562,7 +588,7 @@ public class OrderController {
                     payment.setPaymentStatus(Payment.PaymentStatus.PAYMENT_FAILED);
                     payment.setUpdateDate(LocalDateTime.now());
                     paymentRepository.save(payment);
-                    System.out.println("[DEBUG] Payment 실패 처리: " + payment.getPaymentId());
+                    System.out.println("[DEBUG] Payment 실패 처리: " + payment.getId().getPaymentId());
                 }
             }
 
@@ -581,6 +607,73 @@ public class OrderController {
         }
 
         System.out.println("[DEBUG] 결제 실패 처리 응답: " + result);
+        return result;
+    }
+
+    // 주문 취소 API (주문 페이지에서 메인 페이지로 이동할 때 호출)
+    @PostMapping("/api/order/cancel")
+    @ResponseBody
+    public Map<String, Object> cancelOrder(@RequestBody Map<String, Object> req, HttpSession session) {
+        System.out.println("=== /api/order/cancel API 호출됨 ===");
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            Object userObj = session.getAttribute("user");
+            if (userObj == null || !(userObj instanceof LoginResponse.UserInfo userInfo)) {
+                result.put("success", false);
+                result.put("message", "로그인이 필요합니다.");
+                return result;
+            }
+
+            String idForAdmin = userInfo.getIdForAdmin();
+            String orderId = (String) req.get("orderId");
+
+            System.out.println("[DEBUG] 주문 취소 처리: orderId=" + orderId + ", idForAdmin=" + idForAdmin);
+
+            if (orderId == null) {
+                result.put("success", false);
+                result.put("message", "주문번호가 필요합니다.");
+                return result;
+            }
+
+            // 1. 주문 상태를 FAILED로 변경
+            Optional<Order> orderOpt = orderRepository.findById(new OrderId(orderId, idForAdmin));
+            if (orderOpt.isEmpty()) {
+                result.put("success", false);
+                result.put("message", "해당 주문을 찾을 수 없습니다.");
+                return result;
+            }
+
+            Order order = orderOpt.get();
+            order.setOrderStatus(Order.OrderStatus.ORDER_FAILED);
+            order.setUpdateDate(LocalDateTime.now());
+            orderRepository.save(order);
+            System.out.println("[DEBUG] 주문 상태 FAILED로 변경: " + order.getOrderId());
+
+            // 2. 관련 Payment들도 모두 FAILED로 변경
+            List<Payment> payments = paymentRepository.findByIdOrderIdAndIdIdForAdmin(orderId, idForAdmin);
+            System.out.println("[DEBUG] 관련 Payment 개수: " + payments.size());
+
+            for (Payment payment : payments) {
+                if (payment.getPaymentStatus() == Payment.PaymentStatus.PAYMENT_ATTEMPT) {
+                    payment.setPaymentStatus(Payment.PaymentStatus.PAYMENT_FAILED);
+                    payment.setUpdateDate(LocalDateTime.now());
+                    paymentRepository.save(payment);
+                    System.out.println("[DEBUG] Payment 상태 FAILED로 변경: " + payment.getId().getPaymentId());
+                }
+            }
+
+            result.put("success", true);
+            result.put("message", "주문이 취소되었습니다.");
+
+        } catch (Exception e) {
+            System.out.println("[ERROR] 주문 취소 처리 중 오류:");
+            e.printStackTrace();
+            result.put("success", false);
+            result.put("message", "주문 취소 처리 중 오류: " + e.getMessage());
+        }
+
+        System.out.println("[DEBUG] 주문 취소 처리 응답: " + result);
         return result;
     }
 
@@ -626,7 +719,7 @@ public class OrderController {
             System.out.println("주문 상세 개수: " + orderDetails.size());
 
             // 4. 결제 정보 조회
-            List<Payment> payments = paymentRepository.findByOrderIdAndIdForAdmin(orderId, idForAdmin);
+            List<Payment> payments = paymentRepository.findByIdOrderIdAndIdIdForAdmin(orderId, idForAdmin);
             Payment latestPayment = payments.isEmpty() ? null : payments.get(payments.size() - 1);
 
             // 5. 사용자 정보 조회
@@ -687,7 +780,7 @@ public class OrderController {
             model.addAttribute("ordererEmail", user.getUserEmail());
 
             // 결제 정보
-            model.addAttribute("paymentId", latestPayment != null ? latestPayment.getPaymentId() : "");
+            model.addAttribute("paymentId", latestPayment != null ? latestPayment.getId().getPaymentId() : "");
             model.addAttribute("paymentMethod", paymentMethodName);
             model.addAttribute("paymentStatus", latestPayment != null ? latestPayment.getPaymentStatus().toString() : "");
 

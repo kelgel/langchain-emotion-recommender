@@ -178,7 +178,7 @@ CREATE TABLE `order` (
 
 -- 13. 결제 테이블
 CREATE TABLE payment (
-    payment_id VARCHAR(50) PRIMARY KEY,
+    payment_id VARCHAR(50) NOT NULL,
     order_id VARCHAR(50) NOT NULL,
     id_for_admin VARCHAR(50) NOT NULL,
     payment_method_id VARCHAR(30) NOT NULL,
@@ -186,6 +186,7 @@ CREATE TABLE payment (
     payment_status ENUM('PENDING', 'COMPLETED', 'FAILED', 'CANCELLED', 'REFUNDED') NOT NULL DEFAULT 'PENDING',
     payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     pg_transaction_id VARCHAR(100),
+    PRIMARY KEY (payment_id, order_id, id_for_admin),
     FOREIGN KEY (order_id, id_for_admin) REFERENCES `order`(order_id, id_for_admin),
     FOREIGN KEY (payment_method_id) REFERENCES payment_method(payment_method_id),
     INDEX idx_payment_status (payment_status),
