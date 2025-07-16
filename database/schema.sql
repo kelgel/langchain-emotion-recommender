@@ -2,8 +2,8 @@
 -- MySQL 8.0 기준으로 작성됨
 
 -- 데이터베이스 생성 (필요시)
-CREATE DATABASE IF NOT EXISTS bookstore_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE bookstore_db;
+CREATE DATABASE IF NOT EXISTS bookstore CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE bookstore;
 
 -- 기존 테이블 삭제 (순서 중요: 외래키 의존성 고려)
 SET FOREIGN_KEY_CHECKS = 0;
@@ -232,35 +232,35 @@ CREATE INDEX idx_product_publisher ON product(publisher);
 -- 전문 검색 인덱스 (MySQL 5.7+)
 -- ALTER TABLE product ADD FULLTEXT(product_name, author, publisher);
 
--- 트리거 생성: 재고 변경 시 상품 상태 자동 업데이트
-DELIMITER //
+-- 트리거 생성: 재고 변경 시 상품 상태 자동 업데이트 (권한 문제로 주석 처리)
+-- DELIMITER //
 
-CREATE TRIGGER update_product_status_after_stock_change
-    AFTER INSERT ON stock
-    FOR EACH ROW
-BEGIN
-    DECLARE current_stock INT DEFAULT 0;
-    
-    -- 최신 재고량 조회
-    SELECT after_quantity INTO current_stock
-    FROM stock 
-    WHERE isbn = NEW.isbn 
-    ORDER BY update_date DESC 
-    LIMIT 1;
-    
-    -- 재고에 따른 상품 상태 업데이트
-    IF current_stock <= 0 THEN
-        UPDATE product 
-        SET product_status = 'OUT_OF_STOCK' 
-        WHERE isbn = NEW.isbn;
-    ELSEIF current_stock > 0 AND (SELECT product_status FROM product WHERE isbn = NEW.isbn) = 'OUT_OF_STOCK' THEN
-        UPDATE product 
-        SET product_status = 'AVAILABLE' 
-        WHERE isbn = NEW.isbn;
-    END IF;
-END//
+-- CREATE TRIGGER update_product_status_after_stock_change
+--     AFTER INSERT ON stock
+--     FOR EACH ROW
+-- BEGIN
+--     DECLARE current_stock INT DEFAULT 0;
+--     
+--     -- 최신 재고량 조회
+--     SELECT after_quantity INTO current_stock
+--     FROM stock 
+--     WHERE isbn = NEW.isbn 
+--     ORDER BY update_date DESC 
+--     LIMIT 1;
+--     
+--     -- 재고에 따른 상품 상태 업데이트
+--     IF current_stock <= 0 THEN
+--         UPDATE product 
+--         SET product_status = 'OUT_OF_STOCK' 
+--         WHERE isbn = NEW.isbn;
+--     ELSEIF current_stock > 0 AND (SELECT product_status FROM product WHERE isbn = NEW.isbn) = 'OUT_OF_STOCK' THEN
+--         UPDATE product 
+--         SET product_status = 'AVAILABLE' 
+--         WHERE isbn = NEW.isbn;
+--     END IF;
+-- END//
 
-DELIMITER ;
+-- DELIMITER ;
 
 -- 뷰 생성: 상품과 최신 재고 정보 조합
 CREATE VIEW product_with_stock AS
