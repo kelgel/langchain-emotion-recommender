@@ -248,6 +248,7 @@
     width: 220px;
     border-right: 1px solid #e9ecef;
     padding: 0 15px 20px 20px;
+    overflow-y: auto;
     max-height: calc(100% - 10px);
 }
 

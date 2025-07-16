@@ -330,7 +330,7 @@
     width: 220px;
     border-right: 1px solid #e9ecef;
     padding: 0 15px 0 20px; /* 우측 패딩 줄임 */
-    overflow-y: hidden;
+    overflow-y: auto;
     max-height: calc(100% - 10px); /* 약간의 여유 공간 확보 */
 }
 
