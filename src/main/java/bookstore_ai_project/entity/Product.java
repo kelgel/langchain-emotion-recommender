@@ -43,6 +43,12 @@ public class Product {
     @Column(name = "detail_description", columnDefinition = "TEXT") // TEXT 타입
     private String detailDescription;
 
+    @Column(name = "emotion_keyword", columnDefinition = "TEXT") // TEXT 타입
+    private String emotionKeyword;
+
+    @Column(name = "product_keyword", columnDefinition = "TEXT") // TEXT 타입
+    private String productKeyword;
+
     @Column(name = "img", length = 1000)
     private String img;
 

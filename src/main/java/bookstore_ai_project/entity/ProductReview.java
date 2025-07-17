@@ -33,6 +33,9 @@ public class ProductReview {
     @Column(name = "review_content", columnDefinition = "TEXT")  // TEXT 타입
     private String reviewContent;
 
+    @Column(name = "emotion_keyword", columnDefinition = "TEXT") // TEXT 타입
+    private String emotionKeyword;
+
     @Column(name = "reg_date")
     private LocalDateTime regDate;
 

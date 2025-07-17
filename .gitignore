@@ -36,4 +36,4 @@ build/
 src/main/resources/application.properties
 
 #scripts 파일
-scripts
+datascripts
