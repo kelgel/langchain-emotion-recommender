@@ -68,7 +68,7 @@ public class Product {
     @Column(name = "search_count")
     private Integer searchCount;
 
-    @Column(name = "reg_date")
+    @Column(name = "reg_date", columnDefinition = "DATE")
     private LocalDateTime regDate;
 
     // 연관관계 설정 (Product와 LowCategory는 다대일 관계)
