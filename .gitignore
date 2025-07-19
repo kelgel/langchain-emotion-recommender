@@ -35,5 +35,9 @@ build/
 # application properties (민감 정보 보호)
 src/main/resources/application.properties
 
-#scripts 파일
-datascripts
+# 벡터DB 파일 (용량 큰 바이너리)
+datascripts/chroma_db/
+datascripts/chroma_db.zip
+
+# 환경변수 파일 (보안)
+datascripts/.env
