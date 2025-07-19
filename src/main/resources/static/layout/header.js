@@ -13,7 +13,14 @@ document.addEventListener('DOMContentLoaded', function() {
         searchInput: document.getElementById('searchInput'),
         detailedSearchBtn: document.querySelector('.detailed-search-btn'),
         topButton: document.getElementById('topButton'),
-        clearRecentBtn: document.getElementById('clearRecentBtn')
+        clearRecentBtn: document.getElementById('clearRecentBtn'),
+        // 챗봇 요소들
+        chatbotToggle: document.getElementById('chatbotToggle'),
+        chatbotWindow: document.getElementById('chatbotWindow'),
+        chatbotClose: document.getElementById('chatbotClose'),
+        chatbotInput: document.getElementById('chatbotInput'),
+        chatbotSend: document.getElementById('chatbotSend'),
+        chatbotMessages: document.getElementById('chatbotMessages')
     };
 
     // 카테고리 토글 이벤트 리스너 추가 (교보문고 스타일)
@@ -716,6 +723,102 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 관리자 제한 설정 적용
     setupAdminRestrictions();
+    
+    // AI 챗봇 기능 초기화
+    initializeChatbot();
 
     console.log('헤더 초기화 완료');
+    
+    // AI 챗봇 기능
+    function initializeChatbot() {
+        console.log('챗봇 초기화 시작');
+        
+        // 챗봇 토글 버튼 클릭 이벤트
+        if (elements.chatbotToggle) {
+            elements.chatbotToggle.addEventListener('click', function() {
+                console.log('챗봇 토글 클릭');
+                elements.chatbotWindow.classList.toggle('active');
+            });
+        }
+        
+        // 챗봇 닫기 버튼 클릭 이벤트
+        if (elements.chatbotClose) {
+            elements.chatbotClose.addEventListener('click', function() {
+                console.log('챗봇 닫기 클릭');
+                elements.chatbotWindow.classList.remove('active');
+            });
+        }
+        
+        // 제안 버튼 클릭 이벤트
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('suggestion-btn')) {
+                const text = e.target.getAttribute('data-text');
+                if (text && elements.chatbotInput) {
+                    elements.chatbotInput.value = text;
+                    sendMessage();
+                }
+            }
+        });
+        
+        // 메시지 전송 버튼 클릭 이벤트
+        if (elements.chatbotSend) {
+            elements.chatbotSend.addEventListener('click', sendMessage);
+        }
+        
+        // 입력창 엔터 키 이벤트
+        if (elements.chatbotInput) {
+            elements.chatbotInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        }
+        
+        // 메시지 전송 함수
+        function sendMessage() {
+            const message = elements.chatbotInput.value.trim();
+            if (!message) return;
+            
+            // 사용자 메시지 추가
+            addMessage(message, 'user');
+            
+            // 입력창 비우기
+            elements.chatbotInput.value = '';
+            
+            // 로딩 메시지 표시
+            const loadingDiv = addLoadingMessage();
+            
+            // API 호출 (임시로 더미 응답)
+            setTimeout(() => {
+                loadingDiv.remove();
+                addMessage('죄송합니다. 아직 AI 챗봇 서버가 연결되지 않았습니다. 곧 서비스 예정입니다! 📚', 'bot');
+            }, 1000);
+        }
+        
+        // 메시지 추가 함수
+        function addMessage(text, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `${type}-message`;
+            messageDiv.textContent = text;
+            
+            elements.chatbotMessages.appendChild(messageDiv);
+            elements.chatbotMessages.scrollTop = elements.chatbotMessages.scrollHeight;
+            
+            return messageDiv;
+        }
+        
+        // 로딩 메시지 추가 함수
+        function addLoadingMessage() {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading-message';
+            loadingDiv.textContent = '🤔 생각 중...';
+            
+            elements.chatbotMessages.appendChild(loadingDiv);
+            elements.chatbotMessages.scrollTop = elements.chatbotMessages.scrollHeight;
+            
+            return loadingDiv;
+        }
+        
+        console.log('챗봇 초기화 완료');
+    }
 });
