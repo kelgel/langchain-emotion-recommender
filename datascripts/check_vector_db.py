@@ -86,31 +86,75 @@ def sample_search():
             
             for i, doc in enumerate(results[:2], 1):  # 상위 2개만 표시
                 metadata = doc.metadata
-                doc_type = metadata.get('type', 'unknown')
-                product_name = metadata.get('product_name', 'N/A')
-                print(f"  {i}. [{doc_type}] {product_name}")
-                
+                print(f"\n  {i}. 상품 정보:")
+
+                # 기본 상품 정보
+                print(f"     📋 타입: {metadata.get('type', 'unknown')}")
+                print(f"     📚 ISBN: {metadata.get('isbn', 'N/A')}")
+                top_cat = metadata.get('top_category_name', '')
+                mid_cat = metadata.get('mid_category_name', '')
+                low_cat = metadata.get('low_category_name', '')
+                if top_cat or mid_cat or low_cat:
+                    category_path = ' > '.join(filter(None, [top_cat, mid_cat, low_cat]))
+                    print(f"     🗂️  카테고리: {category_path}")
+                print(f"     📖 제목: {metadata.get('product_name', 'N/A')}")
+                print(f"     ✍️  작가: {metadata.get('author', 'N/A')}")
+                print(f"     🏢 출판사: {metadata.get('publisher', 'N/A')}")
+                print(f"     💰 가격: {metadata.get('price', 'N/A')}원")
+                print(f"     ⭐ 평점: {metadata.get('rate', 'N/A')}")
+
+                # 키워드 정보 (JSON 파싱 필요)
                 if metadata.get('product_keywords'):
                     try:
                         import json
                         kw = json.loads(metadata['product_keywords'])
-                        print(f"     제품키워드: {', '.join(kw)}")
+                        if isinstance(kw, list):
+                            print(f"     🔑 제품키워드: {', '.join(kw)}")
+                        else:
+                            print(f"     🔑 제품키워드: {kw}")
                     except:
-                        print(f"     제품키워드: {metadata['product_keywords'][:50]}...")
+                        print(f"     🔑 제품키워드: {metadata['product_keywords'][:50]}...")
+
                 if metadata.get('product_emotion_keywords'):
                     try:
                         import json
                         kw = json.loads(metadata['product_emotion_keywords'])
-                        print(f"     상품감정: {', '.join(kw)}")
+                        if isinstance(kw, list):
+                            print(f"     😊 상품감정: {', '.join(kw)}")
+                        else:
+                            print(f"     😊 상품감정: {kw}")
                     except:
-                        print(f"     상품감정: {metadata['product_emotion_keywords'][:50]}...")
+                        print(f"     😊 상품감정: {metadata['product_emotion_keywords'][:50]}...")
+
+                # 리뷰 정보 (일반 텍스트 - JSON 파싱 불필요)
+                if metadata.get('review_title'):
+                    review_title = metadata['review_title']
+                    if len(review_title) > 100:
+                        review_title = review_title[:100] + "..."
+                    print(f"     📝 리뷰제목: {review_title}")
+
+                if metadata.get('review_content'):
+                    review_content = metadata['review_content']
+                    if len(review_content) > 150:
+                        review_content = review_content[:150] + "..."
+                    print(f"     📄 리뷰내용: {review_content}")
+
+                # 리뷰 감정 키워드 (JSON 파싱 필요)
                 if metadata.get('review_emotion_keywords'):
                     try:
                         import json
                         kw = json.loads(metadata['review_emotion_keywords'])
-                        print(f"     리뷰감정: {', '.join(kw)}")
+                        if isinstance(kw, list):
+                            print(f"     💬 리뷰감정: {', '.join(kw)}")
+                        else:
+                            print(f"     💬 리뷰감정: {kw}")
                     except:
-                        print(f"     리뷰감정: {metadata['review_emotion_keywords'][:50]}...")
+                        print(f"     💬 리뷰감정: {metadata['review_emotion_keywords'][:50]}...")
+
+                # 추가 정보
+
+                if metadata.get('reg_date'):
+                    print(f"     📅 등록일: {metadata['reg_date']}")
                     
     except Exception as e:
         print(f"❌ 검색 테스트 실패: {e}")
@@ -118,10 +162,14 @@ def sample_search():
 def main():
     """메인 실행 함수"""
     import sys
-    
+
     check_vector_database()
-    
+
+    # 샘플 검색도 기본적으로 실행
     if len(sys.argv) > 1 and sys.argv[1] == "search":
+        sample_search()
+    else:
+        # 기본적으로 샘플 검색도 실행
         sample_search()
 
 if __name__ == "__main__":
