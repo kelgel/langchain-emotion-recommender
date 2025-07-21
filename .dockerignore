@@ -1,0 +1,68 @@
+# Git 관련
+.git
+.gitignore
+.gitattributes
+
+# 문서 파일
+README.md
+TROUBLESHOOTING.md
+*.md
+docs/
+
+# IDE 설정
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# 로그 파일
+*.log
+logs/
+
+# 환경변수 파일
+.env
+.env.*
+
+# 빌드 아티팩트 (Java)
+target/
+!target/*.jar
+# .mvn/     ← 주석 처리 (Docker 빌드에 필요)
+# mvnw*     ← 주석 처리 (Docker 빌드에 필요)
+
+# 빌드 아티팩트 (Python)
+__pycache__/
+*.py[cod]
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 가상환경
+ai_venv/
+venv/
+
+# OS 파일
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 테스트 파일
+test-data/
+mock-data/
+*.tmp
+*.temp
+
