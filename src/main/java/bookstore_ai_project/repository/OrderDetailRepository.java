@@ -9,7 +9,10 @@ import java.util.List;
 
 @Repository
 public interface OrderDetailRepository extends JpaRepository<OrderDetail, String> {
-    
+    /*
+      주문ID와 관리자ID로 주문 상세 내역 조회
+      비즈니스 로직: 주문별 상세 상품 리스트 반환
+    */
     @Query("SELECT od FROM OrderDetail od WHERE od.orderId = :orderId AND od.idForAdmin = :idForAdmin")
     List<OrderDetail> findByOrderIdAndIdForAdmin(@Param("orderId") String orderId, @Param("idForAdmin") String idForAdmin);
 }

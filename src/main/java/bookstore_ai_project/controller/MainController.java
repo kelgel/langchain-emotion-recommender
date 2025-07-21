@@ -33,30 +33,46 @@ import org.springframework.web.bind.annotation.RequestBody;
 import bookstore_ai_project.entity.ProductReview;
 import bookstore_ai_project.entity.OrderId;
 
+/** 주문 관련 비즈니스 로직 서비스 */
 @Controller
 public class MainController {
 
+    /** 카테고리 관리 비즈니스 로직 서비스 */
     @Autowired(required = false)
     private CategoryService categoryService;
 
+    /** 상품 관리 비즈니스 로직 서비스 */
     @Autowired(required = false)
     private ProductService productService;
 
+    /** 사용자 데이터 접근 리포지토리 */
     @Autowired(required = false)
     private UserRepository userRepository;
 
+    /** 주문 데이터 접근 리포지토리 */
     @Autowired(required = false)
     private OrderRepository orderRepository;
 
+    /** 주문 상세 데이터 접근 리포지토리 */
     @Autowired(required = false)
     private OrderDetailRepository orderDetailRepository;
 
+    /** 상품 데이터 접근 리포지토리 */
     @Autowired(required = false)
     private ProductRepository productRepository;
 
+    /** 상품 리뷰 데이터 접근 리포지토리 */
     @Autowired(required = false)
     private ProductReviewRepository productReviewRepository;
 
+    /**
+     * 메인 페이지 진입
+     *
+     * 비즈니스 로직: 카테고리 트리 데이터를 모델에 추가하여 메인 화면 표시
+     *
+     * @param model 뷰 데이터 전달 모델
+     * @return 메인 뷰 이름
+     */
     @RequestMapping("/main")
     public String mainPage(Model model) {
         var categoryTree = categoryService.getCategoryTreeForHeader();
@@ -66,6 +82,15 @@ public class MainController {
         return "product/main";
     }
 
+    /**
+     * 마이페이지 진입
+     *
+     * 비즈니스 로직: 로그인한 사용자의 마이페이지 정보 조회 및 화면 표시
+     *
+     * @param session HTTP 세션
+     * @param model 뷰 데이터 전달 모델
+     * @return 마이페이지 뷰 이름 또는 로그인/관리자 페이지 리다이렉트
+     */
     @RequestMapping("/mypage")
     public String myPage(HttpSession session, Model model) {
         // 🔒 로그인 검증: 비로그인 시 로그인 페이지로 리다이렉트
@@ -93,6 +118,13 @@ public class MainController {
         return "user/mypage";
     }
 
+    /**
+     * 인기 키워드(상품) 조회 API
+     *
+     * 비즈니스 로직: 인기 상품 10개와 기준 시간 반환
+     *
+     * @return 인기 키워드 및 기준 시간(Map)
+     */
     @GetMapping("/api/popular-keywords")
     @ResponseBody
     public Map<String, Object> getPopularKeywords() {
@@ -104,6 +136,14 @@ public class MainController {
         return result;
     }
 
+    /**
+     * 베스트셀러 조회 API
+     *
+     * 비즈니스 로직: 주간/월간/연간 베스트셀러 상품 리스트 반환
+     *
+     * @param type 기간 타입(weekly, monthly, yearly)
+     * @return 베스트셀러 상품 리스트
+     */
     @GetMapping("/api/bestseller")
     @ResponseBody
     public List<ProductSimpleResponse> getBestseller(@RequestParam String type) {
@@ -129,30 +169,66 @@ public class MainController {
         return productService.getBestsellerByPeriod(startDate, endDate, 10);
     }
 
+    /**
+     * 신상품 조회 API
+     *
+     * 비즈니스 로직: 최근 등록된 신상품 10개 반환
+     *
+     * @return 신상품 리스트
+     */
     @GetMapping("/api/newproducts")
     @ResponseBody
     public List<ProductSimpleResponse> getNewProducts() {
         return productService.getNewProducts(10);
     }
 
+    /**
+     * 대분류별 책 개수 조회 API
+     *
+     * 비즈니스 로직: 대분류별 상품 개수 반환
+     *
+     * @return 대분류별 개수 리스트
+     */
     @GetMapping("/api/category/top-count")
     @ResponseBody
     public List<CategoryCountResponse> getTopCategoryBookCount() {
         return categoryService.countBooksByTopCategory();
     }
 
+    /**
+     * 중분류별 책 개수 조회 API
+     *
+     * 비즈니스 로직: 중분류별 상품 개수 반환
+     *
+     * @return 중분류별 개수 리스트
+     */
     @GetMapping("/api/category/middle-count")
     @ResponseBody
     public List<CategoryCountResponse> getMiddleCategoryBookCount() {
         return categoryService.countBooksByMiddleCategory();
     }
 
+    /**
+     * 소분류별 책 개수 조회 API
+     *
+     * 비즈니스 로직: 소분류별 상품 개수 반환
+     *
+     * @return 소분류별 개수 리스트
+     */
     @GetMapping("/api/category/low-count")
     @ResponseBody
     public List<CategoryCountResponse> getLowCategoryBookCount() {
         return categoryService.countBooksByLowCategory();
     }
 
+    /**
+     * 닉네임 중복 체크 API
+     *
+     * 비즈니스 로직: 닉네임 중복 여부 반환
+     *
+     * @param nickname 닉네임
+     * @return 사용 가능 여부 및 메시지(Map)
+     */
     @GetMapping("/api/user/check-nickname")
     @ResponseBody
     public Map<String, Object> checkNickname(@RequestParam String nickname) {
@@ -163,6 +239,14 @@ public class MainController {
         return result;
     }
 
+    /**
+     * 이메일 중복 체크 API
+     *
+     * 비즈니스 로직: 이메일 중복 여부 반환
+     *
+     * @param email 이메일
+     * @return 사용 가능 여부 및 메시지(Map)
+     */
     @GetMapping("/api/user/check-email")
     @ResponseBody
     public Map<String, Object> checkEmail(@RequestParam String email) {
@@ -173,6 +257,15 @@ public class MainController {
         return result;
     }
 
+    /**
+     * 사용자 정보 수정 API
+     *
+     * 비즈니스 로직: 로그인된 사용자의 개인정보를 수정 (이름, 닉네임, 비밀번호, 이메일, 휴대폰, 주소 등)
+     *
+     * @param request 사용자 정보 수정 요청 데이터
+     * @param session HTTP 세션 (사용자 인증 확인용)
+     * @return 수정 결과 및 메시지 (Map)
+     */
     @PostMapping("/api/user/update")
     @ResponseBody
     public Map<String, Object> updateUser(@RequestBody UserUpdateRequest request, HttpSession session) {
@@ -245,6 +338,14 @@ public class MainController {
         return result;
     }
 
+    /**
+     * 사용자 주문 내역 조회 API
+     *
+     * 비즈니스 로직: 로그인된 사용자의 전체 주문 내역을 주문일 역순으로 조회 (주문 상세, 리뷰 포함)
+     *
+     * @param session HTTP 세션 (사용자 인증 확인용)
+     * @return 주문 내역 리스트 (OrderHistoryResponse 리스트)
+     */
     @GetMapping("/api/user/orders")
     @ResponseBody
     public List<OrderHistoryResponse> getUserOrders(HttpSession session) {
@@ -334,6 +435,15 @@ public class MainController {
         return orderHistory;
     }
 
+    /**
+     * 주문 취소 API
+     *
+     * 비즈니스 로직: 로그인된 사용자가 자신의 주문을 취소 (주문 완료 상태에서만 가능)
+     *
+     * @param req 취소 요청 데이터 (orderId 포함)
+     * @param session HTTP 세션 (사용자 인증 확인용)
+     * @return 취소 결과 및 메시지 (Map)
+     */
     @PostMapping("/api/orders/cancel")
     @ResponseBody
     public Map<String, Object> cancelOrder(@RequestBody Map<String, Object> req, HttpSession session) {
@@ -380,6 +490,15 @@ public class MainController {
         return result;
     }
 
+    /**
+     * 상품 리뷰 작성 API
+     *
+     * 비즈니스 로직: 로그인된 사용자가 구매한 상품에 대한 리뷰 작성 (주문별 상품별 1개만 가능)
+     *
+     * @param req 리뷰 데이터 (orderId, isbn, title, content 포함)
+     * @param session HTTP 세션 (사용자 인증 확인용)
+     * @return 리뷰 작성 결과 및 메시지 (Map)
+     */
     @PostMapping("/api/review/write")
     @ResponseBody
     public Map<String, Object> writeReview(@RequestBody Map<String, Object> req, HttpSession session) {
@@ -425,6 +544,15 @@ public class MainController {
         return result;
     }
 
+    /**
+     * 상품 리뷰 수정 API
+     *
+     * 비즈니스 로직: 로그인된 사용자가 작성한 리뷰의 제목과 내용을 수정
+     *
+     * @param req 리뷰 수정 데이터 (reviewId, title, content 포함)
+     * @param session HTTP 세션 (사용자 인증 확인용)
+     * @return 리뷰 수정 결과 및 메시지 (Map)
+     */
     @PostMapping("/api/review/edit")
     @ResponseBody
     public Map<String, Object> editReview(@RequestBody Map<String, Object> req, HttpSession session) {
@@ -464,6 +592,15 @@ public class MainController {
         return result;
     }
 
+    /**
+     * 상품 리뷰 삭제 API
+     *
+     * 비즈니스 로직: 로그인된 사용자가 작성한 리뷰를 삭제 (Soft Delete 방식)
+     *
+     * @param req 리뷰 삭제 데이터 (reviewId 포함)
+     * @param session HTTP 세션 (사용자 인증 확인용)
+     * @return 리뷰 삭제 결과 및 메시지 (Map)
+     */
     @PostMapping("/api/review/delete")
     @ResponseBody
     public Map<String, Object> deleteReview(@RequestBody Map<String, Object> req, HttpSession session) {
@@ -500,7 +637,12 @@ public class MainController {
     }
 
     /**
-     * 카테고리별 책 개수 조회 API (메인 헤더용)
+     * 카테고리별 도서 개수 조회 API (메인 헤더용)
+     *
+     * 비즈니스 로직: 메인 페이지 헤더에서 대/중/소분류별 도서 개수 통계 제공
+     *
+     * @param level 카테고리 레벨 (top/middle/low)
+     * @return 카테고리별 도서 개수 리스트 또는 오류 메시지
      */
     @GetMapping("/api/category-counts/{level}")
     @ResponseBody
@@ -519,6 +661,10 @@ public class MainController {
 
     /**
      * 전체 상품 개수 조회 API (메인 헤더용)
+     *
+     * 비즈니스 로직: 전체 상품의 개수를 조회하여 메인 헤더 등에서 사용
+     *
+     * @return 전체 상품 개수 (Long)
      */
     @GetMapping("/api/total-product-count")
     @ResponseBody

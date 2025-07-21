@@ -15,8 +15,9 @@ import bookstore_ai_project.repository.UserRepository;
 @Controller
 @RequestMapping("")
 public class RegisterController {
-
+    /** 회원가입 비즈니스 로직 서비스 */
     private final RegisterService registerService;
+    /** 사용자 데이터 접근 리포지토리 */
     private final UserRepository userRepository;
 
     public RegisterController(RegisterService registerService, UserRepository userRepository) {
@@ -24,6 +25,14 @@ public class RegisterController {
         this.userRepository = userRepository;
     }
 
+    /**
+     * 회원가입 페이지 진입
+     *
+     * 비즈니스 로직: 회원가입 화면 진입 시 referer 정보를 세션에 저장
+     *
+     * @param request HTTP 요청 객체
+     * @return 회원가입 뷰 이름
+     */
     @RequestMapping("/register")
     public String register(HttpServletRequest request) {
         // referer 정보를 세션에 저장
@@ -34,6 +43,14 @@ public class RegisterController {
         return "user/register";
     }
 
+    /**
+     * 회원가입 처리 API
+     *
+     * 비즈니스 로직: 회원가입 요청을 받아 회원 정보를 저장
+     *
+     * @param registerRequest 회원가입 요청 DTO
+     * @return 처리 결과(success, message)
+     */
     @PostMapping("/api/register")
     @ResponseBody
     public Map<String, Object> registerUser(@RequestBody RegisterRequest registerRequest) {
@@ -45,6 +62,15 @@ public class RegisterController {
         }
     }
 
+    /**
+     * 회원가입 가능 여부 확인 API
+     *
+     * 비즈니스 로직: 이름과 생년월일로 회원가입 가능 여부를 반환
+     *
+     * @param userName 사용자 이름
+     * @param userBirth 생년월일
+     * @return 가입 가능 여부 및 메시지
+     */
     @GetMapping("/api/check-joinable")
     @ResponseBody
     public RegisterResponse checkJoinable(
@@ -54,6 +80,14 @@ public class RegisterController {
         return registerService.checkJoinable(userName, userBirth);
     }
 
+    /**
+     * 닉네임 중복 체크 API
+     *
+     * 비즈니스 로직: 닉네임 중복 여부 반환
+     *
+     * @param nickname 닉네임
+     * @return 중복 여부(duplicated)
+     */
     @GetMapping("/api/check-nickname")
     @ResponseBody
     public Map<String, Boolean> checkNickname(@RequestParam String nickname) {
@@ -61,6 +95,14 @@ public class RegisterController {
         return Map.of("duplicated", exists);
     }
 
+    /**
+     * 아이디 중복 체크 API
+     *
+     * 비즈니스 로직: 아이디 중복 여부 반환
+     *
+     * @param userId 사용자 아이디
+     * @return 중복 여부(duplicated)
+     */
     @GetMapping("/api/check-id")
     @ResponseBody
     public Map<String, Boolean> checkId(@RequestParam String userId) {
@@ -68,6 +110,14 @@ public class RegisterController {
         return Map.of("duplicated", exists);
     }
 
+    /**
+     * 이메일 중복 체크 API
+     *
+     * 비즈니스 로직: 이메일 중복 여부 반환
+     *
+     * @param email 이메일
+     * @return 중복 여부(duplicated)
+     */
     @GetMapping("/api/check-email")
     @ResponseBody
     public Map<String, Boolean> checkEmail(@RequestParam String email) {

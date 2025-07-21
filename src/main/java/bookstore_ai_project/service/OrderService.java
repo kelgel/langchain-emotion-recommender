@@ -27,24 +27,43 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 
+/**
+ * 주문 관리 비즈니스 로직 서비스
+ *
+ * 비즈니스 로직: 주문 생성, 주문 상품 리스트 조회, 관리자용 주문 내역 관리 등
+ */
 @Service
 public class OrderService {
+    /** 상품 데이터 접근 리포지토리 */
     @Autowired
     private ProductRepository productRepository;
     
+    /** 주문 데이터 접근 리포지토리 */
     @Autowired
     private OrderRepository orderRepository;
     
+    /** 주문 상세 데이터 접근 리포지토리 */
     @Autowired
     private OrderDetailRepository orderDetailRepository;
     
+    /** 사용자 데이터 접근 리포지토리 */
     @Autowired
     private UserRepository userRepository;
     
+    /** 재고 데이터 접근 리포지토리 */
     @Autowired
     private StockRepository stockRepository;
 
-    // 상품정보 조회 예시 (실제 구현에서는 ProductRepository 등에서 조회)
+    /**
+     * 주문 상품 리스트 조회
+     *
+     * 비즈니스 로직: 주문할 상품들의 상세 정보와 수량, 총 가격을 계산하여 주문 페이지에서 표시
+     *
+     * @param isbns 주문할 상품들의 ISBN 리스트
+     * @param quantities 각 상품의 주문 수량 리스트
+     * @param session HTTP 세션 (로그인 사용자 정보 확인용)
+     * @return 주문 상품 리스트 (ProductSimpleResponse)
+     */
     public List<ProductSimpleResponse> getOrderProductList(List<String> isbns, List<Integer> quantities, HttpSession session) {
         List<ProductSimpleResponse> result = new ArrayList<>();
         for (int i = 0; i < isbns.size(); i++) {
@@ -80,6 +99,20 @@ public class OrderService {
 
     /**
      * 관리자용 주문 조회 (페이징, 정렬, 검색 지원)
+     *
+     * 비즈니스 로직: 관리자 페이지에서 페이징, 정렬, 검색 조건에 따라 주문 내역을 조회
+     *
+     * @param sort 정렬 기준
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @param orderId 주문번호 검색어
+     * @param userId 사용자 ID 검색어
+     * @param minAmount 최소 주문 금액
+     * @param maxAmount 최대 주문 금액
+     * @param startDate 조회 시작 날짜
+     * @param endDate 조회 종료 날짜
+     * @param orderStatus 주문 상태
+     * @return 주문 내역 페이지 응답 DTO
      */
     public AdminOrderPageResponse getAdminOrders(String sort, int page, int size, 
             String orderId, String userId, String minAmount, String maxAmount, 
@@ -141,6 +174,17 @@ public class OrderService {
     
     /**
      * 검색 조건이 있는지 확인
+     *
+     * 비즈니스 로직: 주문 검색 조건(주문번호, 사용자ID, 금액, 날짜, 상태 등) 입력 여부 확인
+     *
+     * @param orderId 주문번호
+     * @param userId 사용자 ID
+     * @param minAmount 최소 금액
+     * @param maxAmount 최대 금액
+     * @param startDate 시작 날짜
+     * @param endDate 종료 날짜
+     * @param orderStatus 주문 상태
+     * @return 검색 조건 존재 여부
      */
     private boolean hasSearchConditions(String orderId, String userId, String minAmount, 
             String maxAmount, String startDate, String endDate, String orderStatus) {
@@ -155,6 +199,18 @@ public class OrderService {
     
     /**
      * 검색 조건에 따른 주문 조회 (Repository에서 구현 필요)
+     *
+     * 비즈니스 로직: 입력된 검색 조건에 따라 주문을 복합적으로 조회
+     *
+     * @param orderId 주문번호
+     * @param userId 사용자 ID
+     * @param minAmount 최소 금액
+     * @param maxAmount 최대 금액
+     * @param startDate 시작 날짜
+     * @param endDate 종료 날짜
+     * @param orderStatus 주문 상태
+     * @param pageable 페이징 정보
+     * @return 주문 페이지 객체
      */
     private Page<Order> searchOrdersWithConditions(String orderId, String userId, 
             String minAmount, String maxAmount, String startDate, String endDate, 
@@ -253,6 +309,11 @@ public class OrderService {
     
     /**
      * Order 엔티티를 AdminOrderHistoryResponse로 변환
+     *
+     * 비즈니스 로직: 주문 엔티티를 관리자용 주문 내역 응답 DTO로 변환
+     *
+     * @param order 변환할 주문 엔티티
+     * @return 관리자 주문 내역 응답 DTO
      */
     private AdminOrderHistoryResponse convertToAdminOrderResponse(Order order) {
         AdminOrderHistoryResponse response = new AdminOrderHistoryResponse();
@@ -302,6 +363,13 @@ public class OrderService {
     
     /**
      * 주문 상태 변경
+     *
+     * 비즈니스 로직: 주문의 상태를 변경하고, 상품준비중으로 변경 시 재고 차감 처리
+     *
+     * @param orderId 주문 ID
+     * @param idForAdmin 관리자용 사용자 ID
+     * @param status 변경할 주문 상태
+     * @return 없음
      */
     public void updateOrderStatus(String orderId, String idForAdmin, String status) {
         try {
@@ -337,6 +405,12 @@ public class OrderService {
     
     /**
      * 상품준비중 상태 변경 시 재고 차감 처리
+     *
+     * 비즈니스 로직: 주문이 상품준비중 상태로 변경될 때 주문 상세 내역에 따라 재고를 차감
+     *
+     * @param orderId 주문 ID
+     * @param idForAdmin 관리자용 사용자 ID
+     * @return 없음
      */
     private void processStockOutbound(String orderId, String idForAdmin) {
         try {

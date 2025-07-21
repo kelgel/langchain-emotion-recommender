@@ -8,14 +8,33 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/**
+ * 회원가입 비즈니스 로직 서비스
+ *
+ * 비즈니스 로직: 신규 회원 가입 처리, 중복 검증, 사용자 데이터 생성 등
+ */
 @Service
 public class RegisterService {
+    /** 사용자 데이터 접근 리포지토리 */
     private final UserRepository userRepository;
 
+    /**
+     * RegisterService 생성자
+     *
+     * @param userRepository 사용자 데이터 리포지토리
+     */
     public RegisterService(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 
+    /**
+     * 신규 회원 가입 처리
+     *
+     * 비즈니스 로직: 중복 검증(아이디/닉네임/이메일) 후 신규 사용자 데이터 생성 및 저장
+     *
+     * @param registerRequest 회원가입 요청 데이터 (아이디, 비밀번호, 개인정보 등)
+     * @throws RuntimeException 중복된 아이디/닉네임/이메일 사용 시
+     */
     public void registerUser(RegisterRequest registerRequest) {
         // 중복 검증
         if (userRepository.existsByIdForUser(registerRequest.getIdForUser())) {
@@ -56,6 +75,13 @@ public class RegisterService {
         userRepository.save(user);
     }
 
+    /**
+     * 다음 관리자 ID 생성
+     *
+     * 비즈니스 로직: 기존 관리자 ID 중 최대값을 조회하여 순차적으로 증가시킨 새로운 ID 생성
+     *
+     * @return 새로 생성된 관리자 ID (U00001 형식)
+     */
     private String generateNextIdForAdmin() {
         // 최대 ID 조회
         String maxId = userRepository.findMaxIdForAdmin().orElse("U00000");
@@ -68,6 +94,15 @@ public class RegisterService {
         return String.format("U%05d", nextNumber);
     }
 
+    /**
+     * 회원가입 가능 여부 확인
+     *
+     * 비즈니스 로직: 이름과 생년월일로 기존 회원 조회하여 상태별 가입 가능 여부 판단
+     *
+     * @param userName 사용자 이름
+     * @param userBirth 사용자 생년월일
+     * @return 가입 가능 여부 및 메시지 (RegisterResponse)
+     */
     public RegisterResponse checkJoinable(String userName, LocalDate userBirth) {
         return userRepository.findByUserNameAndUserBirth(userName, userBirth)
                 .map(user -> {

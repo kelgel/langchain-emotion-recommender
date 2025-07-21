@@ -20,23 +20,36 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * 카테고리 관리 비즈니스 로직 서비스
+ *
+ * 비즈니스 로직: 대/중/소분류 카테고리 조회, 카테고리 트리 구성, 카테고리별 도서 개수 집계 등
+ */
 @Service
 public class CategoryService {
 
+    /** 대분류 데이터 접근 리포지토리 */
     @Autowired
     private TopCategoryRepository topCategoryRepository;
 
+    /** 중분류 데이터 접근 리포지토리 */
     @Autowired
     private MiddleCategoryRepository middleCategoryRepository;
 
+    /** 소분류 데이터 접근 리포지토리 */
     @Autowired
     private LowCategoryRepository lowCategoryRepository;
 
+    /** 상품 데이터 접근 리포지토리 */
     @Autowired
     private ProductRepository productRepository;
 
     /**
-     * 모든 대분류 조회 (DTO 반환)
+     * 전체 대분류 리스트 조회
+     *
+     * 비즈니스 로직: 모든 대분류 카테고리를 순서대로 조회하여 DTO로 변환 후 반환
+     *
+     * @return 대분류 리스트 (TopCategoryResponse)
      */
     public List<TopCategoryResponse> getAllTopCategories() {
         List<TopCategory> entities = topCategoryRepository.findAllByOrderByTopCategory();
@@ -46,7 +59,12 @@ public class CategoryService {
     }
 
     /**
-     * 특정 대분류에 속한 중분류들 조회 (DTO 반환)
+     * 특정 대분류에 속한 중분류 리스트 조회
+     *
+     * 비즈니스 로직: 지정된 대분류 ID에 해당하는 모든 중분류들을 조회하여 DTO로 변환 후 반환
+     *
+     * @param topCategoryId 대분류 카테고리 ID
+     * @return 중분류 리스트 (MiddleCategoryResponse)
      */
     public List<MiddleCategoryResponse> getMiddleCategoriesByTopCategory(Integer topCategory) {
         List<MiddleCategory> entities = middleCategoryRepository.findByTopCategoryOrderByMidCategory(topCategory);
@@ -56,7 +74,12 @@ public class CategoryService {
     }
 
     /**
-     * 특정 중분류에 속한 소분류들 조회 (DTO 반환)
+     * 특정 중분류에 속한 소분류 리스트 조회
+     *
+     * 비즈니스 로직: 지정된 중분류 ID에 해당하는 모든 소분류들을 조회하여 DTO로 변환 후 반환
+     *
+     * @param midCategory 중분류 카테고리 ID
+     * @return 소분류 리스트 (LowCategoryResponse)
      */
     public List<LowCategoryResponse> getLowCategoriesByMiddleCategory(Integer midCategory) {
         List<LowCategory> entities = lowCategoryRepository.findByMidCategoryOrderByLowCategory(midCategory);
@@ -67,7 +90,10 @@ public class CategoryService {
 
     /**
      * 헤더에서 사용할 전체 카테고리 트리 구조 조회
-     * 한 번의 호출로 모든 카테고리 데이터를 DTO로 변환하여 반환
+     *
+     * 비즈니스 로직: 한 번의 호출로 모든 카테고리(대/중/소분류) 데이터를 트리 구조로 구성하여 DTO 반환
+     *
+     * @return 전체 카테고리 트리 구조 (CategoryTreeResponse)
      */
     public CategoryTreeResponse getCategoryTreeForHeader() {
         try {
@@ -106,7 +132,11 @@ public class CategoryService {
     }
 
     /**
-     * 대분류별 책 개수 집계
+     * 대분류별 도서 개수 집계
+     *
+     * 비즈니스 로직: 각 대분류에 해당하는 도서의 총 개수를 집계하여 통계 데이터로 제공
+     *
+     * @return 대분류별 도서 개수 리스트 (CategoryCountResponse)
      */
     public List<CategoryCountResponse> countBooksByTopCategory() {
         List<Object[]> result = productRepository.countBooksByTopCategory();
@@ -122,7 +152,11 @@ public class CategoryService {
     }
 
     /**
-     * 중분류별 책 개수 집계
+     * 중분류별 도서 개수 집계
+     *
+     * 비즈니스 로직: 각 중분류에 해당하는 도서의 총 개수를 집계하여 통계 데이터로 제공
+     *
+     * @return 중분류별 도서 개수 리스트 (CategoryCountResponse)
      */
     public List<CategoryCountResponse> countBooksByMiddleCategory() {
         List<Object[]> result = productRepository.countBooksByMiddleCategory();
@@ -138,7 +172,11 @@ public class CategoryService {
     }
 
     /**
-     * 소분류별 책 개수 집계
+     * 소분류별 도서 개수 집계
+     *
+     * 비즈니스 로직: 각 소분류에 해당하는 도서의 총 개수를 집계하여 통계 데이터로 제공
+     *
+     * @return 소분류별 도서 개수 리스트 (CategoryCountResponse)
      */
     public List<CategoryCountResponse> countBooksByLowCategory() {
         List<Object[]> result = productRepository.countBooksByLowCategory();

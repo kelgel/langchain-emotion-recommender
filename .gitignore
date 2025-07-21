@@ -41,14 +41,6 @@ ai-service/data/chroma_db/
 src/main/resources/application.properties
 src/main/resources/application-docker.properties
 
-
-#scripts 파일
-datascripts
-
-# 벡터DB 파일 (용량 큰 바이너리)
-ai-service/data/chroma_db/
-datascripts/chroma_db.zip
-
 # 벡터DB 파일 -> ai-service/data로 경로 이동
 /ai-service/data/chroma_db/
 /ai-service/data/chroma_db.zip
@@ -89,7 +81,8 @@ ai-service/.venv/
 # 개발자별 설정 파일
 docker-compose.dev.yml
 docker-compose.*.yml
-docker-compose.yml
 
 #bfg 파일
 bfg-1.14.0.jar
+
+settings.local.json

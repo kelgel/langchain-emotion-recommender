@@ -8,12 +8,22 @@ import org.springframework.security.web.SecurityFilterChain;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * 간소화된 Spring Security 설정
- * 평문 비밀번호 사용으로 암호화 기능 제거
+ * Spring Security 보안 설정 클래스
+ *
+ * 비즈니스 로직: AI 도서 추천 시스템의 보안 정책 설정 (CSRF 비활성화, 폼 로그인 비활성화)
  */
 @Configuration
 public class SecurityConfig {
 
+    /**
+     * Spring Security 필터 체인 설정
+     *
+     * 비즈니스 로직: AJAX 기반 인증을 위한 보안 설정 (CSRF 비활성화, 모든 경로 허용)
+     *
+     * @param http HTTP 보안 설정 객체
+     * @return 설정된 보안 필터 체인
+     * @throws Exception 보안 설정 오류 시
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http

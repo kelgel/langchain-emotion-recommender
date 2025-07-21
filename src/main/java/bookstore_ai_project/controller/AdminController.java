@@ -18,27 +18,42 @@ import org.springframework.http.ResponseEntity;
 
 import jakarta.servlet.http.HttpSession;
 
+/**
+ * 관리자 기능 컴트롤러
+ *
+ * 비즈니스 로직: 관리자만 접근 가능한 상품 관리, 주문 관리, 사용자 관리 기능 제공
+ */
 @Controller
 @RequestMapping("/admin")
 public class AdminController {
 
+    /** 상품 관리 비즈니스 로직 서비스 */
     @Autowired
     private ProductService productService;
 
+    /** 카테고리 관리 비즈니스 로직 서비스 */
     @Autowired
     private CategoryService categoryService;
     
+    /** 주문 관리 비즈니스 로직 서비스 */
     @Autowired
     private OrderService orderService;
     
+    /** 주문 데이터 접근 리포지토리 */
     @Autowired
     private OrderRepository orderRepository;
     
+    /** 사용자 데이터 접근 리포지토리 */
     @Autowired
     private UserRepository userRepository;
 
     /**
-     * 관리자 권한 확인
+     * 관리자 권한 확인 유틸리티 메서드
+     *
+     * 비즈니스 로직: 세션에서 관리자 권한 여부를 확인하여 비인가 접근 차단
+     *
+     * @param session HTTP 세션 객체
+     * @return 관리자 여부 (true: 관리자, false: 일반 사용자)
      */
     private boolean isAdmin(HttpSession session) {
         Boolean isAdmin = (Boolean) session.getAttribute("isAdmin");
@@ -47,6 +62,12 @@ public class AdminController {
 
     /**
      * 관리자 메인 페이지 (상품조회 기본)
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 상품조회 페이지로 리다이렉트
+     *
+     * @param session HTTP 세션
+     * @param model 뷰 데이터 전달 모델
+     * @return 리다이렉트 경로
      */
     @GetMapping("")
     public String adminMain(HttpSession session, Model model) {
@@ -58,6 +79,12 @@ public class AdminController {
 
     /**
      * 상품조회 페이지
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 상품조회 화면 표시
+     *
+     * @param session HTTP 세션
+     * @param model 뷰 데이터 전달 모델
+     * @return 상품조회 뷰 이름 또는 로그인 페이지 리다이렉트
      */
     @GetMapping("/product-inquiry")
     public String productInquiry(HttpSession session, Model model) {
@@ -77,6 +104,12 @@ public class AdminController {
 
     /**
      * 상품등록 페이지
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 상품등록 화면 표시
+     *
+     * @param session HTTP 세션
+     * @param model 뷰 데이터 전달 모델
+     * @return 상품등록 뷰 이름 또는 로그인 페이지 리다이렉트
      */
     @GetMapping("/product-register")
     public String productRegister(HttpSession session, Model model) {
@@ -96,6 +129,12 @@ public class AdminController {
 
     /**
      * 주문조회 페이지
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 주문조회 화면 표시
+     *
+     * @param session HTTP 세션
+     * @param model 뷰 데이터 전달 모델
+     * @return 주문조회 뷰 이름 또는 로그인 페이지 리다이렉트
      */
     @GetMapping("/order-inquiry")
     public String orderInquiry(HttpSession session, Model model) {
@@ -115,6 +154,12 @@ public class AdminController {
 
     /**
      * 관리자 회원조회 페이지
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 회원조회 화면 표시
+     *
+     * @param session HTTP 세션
+     * @param model 뷰 데이터 전달 모델
+     * @return 회원조회 뷰 이름 또는 로그인 페이지 리다이렉트
      */
     @GetMapping("/user-inquiry")
     public String userInquiry(HttpSession session, Model model) {
@@ -134,6 +179,11 @@ public class AdminController {
 
     /**
      * 관리자 로그아웃
+     *
+     * 비즈니스 로직: 세션 무효화 후 메인페이지로 리다이렉트
+     *
+     * @param session HTTP 세션
+     * @return 리다이렉트 경로
      */
     @PostMapping("/logout")
     public String logout(HttpSession session) {
@@ -143,6 +193,11 @@ public class AdminController {
 
     /**
      * GET 방식 관리자 로그아웃
+     *
+     * 비즈니스 로직: GET 요청으로 로그아웃 처리
+     *
+     * @param session HTTP 세션
+     * @return 리다이렉트 경로
      */
     @GetMapping("/logout")
     public String logoutGet(HttpSession session) {
@@ -150,7 +205,21 @@ public class AdminController {
     }
 
     /**
-     * 관리자 상품 조회 API - 전체 상품
+     * 관리자 상품 조회 API - 전체 상품 리스트 조회
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 상품 리스트를 페이지네이션과 검색 조건에 따라 조회
+     *
+     * @param session HTTP 세션 (관리자 권한 확인용)
+     * @param sort 정렬 기준 (기본값: latest)
+     * @param page 페이지 번호 (기본값: 1)
+     * @param size 페이지 크기 (기본값: 30)
+     * @param title 제목 검색어
+     * @param author 저자 검색어
+     * @param publisher 출판사 검색어
+     * @param salesStatus 판매 상태
+     * @param startDate 시작 날짜
+     * @param endDate 종료 날짜
+     * @return 상품 리스트 데이터 (ProductListPageResponse) 또는 권한 오류
      */
     @GetMapping("/api/products")
     @ResponseBody
@@ -175,7 +244,22 @@ public class AdminController {
     }
 
     /**
-     * 관리자 상품 조회 API - 카테고리별
+     * 관리자 상품 조회 API - 소분류 카테고리별 상품 리스트 조회
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 특정 소분류 카테고리에 속한 상품들을 페이지네이션과 검색 조건에 따라 조회
+     *
+     * @param session HTTP 세션 (관리자 권한 확인용)
+     * @param lowCategoryId 소분류 카테고리 ID
+     * @param sort 정렬 기준 (기본값: latest)
+     * @param page 페이지 번호 (기본값: 1)
+     * @param size 페이지 크기 (기본값: 30)
+     * @param title 제목 검색어
+     * @param author 저자 검색어
+     * @param publisher 출판사 검색어
+     * @param salesStatus 판매 상태
+     * @param startDate 시작 날짜
+     * @param endDate 종료 날짜
+     * @return 소분류별 상품 리스트 데이터 또는 권한 오류
      */
     @GetMapping("/api/products/category/{lowCategoryId}")
     @ResponseBody
@@ -201,7 +285,12 @@ public class AdminController {
     }
 
     /**
-     * 카테고리 트리 조회 API
+     * 관리자 카테고리 트리 조회 API
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 전체 카테고리 트리 구조 반환 (대-중-소분류)
+     *
+     * @param session HTTP 세션 (관리자 권한 확인용)
+     * @return 카테고리 트리 데이터 (CategoryTreeResponse) 또는 권한 오류
      */
     @GetMapping("/api/categories")
     @ResponseBody
@@ -214,7 +303,13 @@ public class AdminController {
     }
 
     /**
-     * 카테고리별 책 개수 조회 API
+     * 관리자 카테고리별 도서 개수 조회 API
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 대/중/소분류별 도서 개수 통계 제공
+     *
+     * @param session HTTP 세션 (관리자 권한 확인용)
+     * @param level 카테고리 레벨 (top/middle/low)
+     * @return 카테고리별 도서 개수 리스트 또는 권한 오류
      */
     @GetMapping("/api/category-counts/{level}")
     @ResponseBody
@@ -239,7 +334,12 @@ public class AdminController {
     }
 
     /**
-     * 전체 상품 개수 조회 API
+     * 관리자 전체 상품 개수 조회 API
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 데이터베이스에 등록된 전체 상품 수 반환
+     *
+     * @param session HTTP 세션 (관리자 권한 확인용)
+     * @return 전체 상품 개수 (Long) 또는 권한 오류
      */
     @GetMapping("/api/total-product-count")
     @ResponseBody
@@ -253,7 +353,14 @@ public class AdminController {
     }
 
     /**
-     * 상품 입고 API
+     * 관리자 상품 입고 처리 API
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 특정 상품의 재고를 입고 수량만큼 증가
+     *
+     * @param session HTTP 세션 (관리자 권한 확인용)
+     * @param isbn 입고할 상품의 ISBN 코드
+     * @param quantity 입고 수량
+     * @return 입고 처리 결과 메시지 또는 오류 메시지
      */
     @PostMapping("/api/products/{isbn}/stock-in")
     @ResponseBody
@@ -275,7 +382,14 @@ public class AdminController {
     }
 
     /**
-     * 상품 상태 변경 API
+     * 관리자 상품 판매 상태 변경 API
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 특정 상품의 판매 상태 변경 (판매중/절판/품절 등)
+     *
+     * @param session HTTP 세션 (관리자 권한 확인용)
+     * @param isbn 상태를 변경할 상품의 ISBN 코드
+     * @param status 새로운 판매 상태
+     * @return 상태 변경 결과 메시지 또는 오류 메시지
      */
     @PostMapping("/api/products/{isbn}/status")
     @ResponseBody
@@ -297,7 +411,13 @@ public class AdminController {
     }
 
     /**
-     * 상품 상세 정보 조회 API
+     * 관리자 상품 상세 정보 조회 API
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 특정 상품의 상세 정보 및 재고 상태 조회
+     *
+     * @param session HTTP 세션 (관리자 권한 확인용)
+     * @param isbn 조회할 상품의 ISBN 코드
+     * @return 상품 상세 정보 (Product) 또는 오류 메시지
      */
     @GetMapping("/api/products/{isbn}/detail")
     @ResponseBody
@@ -341,7 +461,14 @@ public class AdminController {
     }
 
     /**
-     * 상품 정보 수정 API
+     * 관리자 상품 정보 수정 API
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 특정 상품의 기본 정보 (가격 등) 수정
+     *
+     * @param session HTTP 세션 (관리자 권한 확인용)
+     * @param isbn 수정할 상품의 ISBN 코드
+     * @param price 새로운 가격 (선택사항)
+     * @return 수정 결과 메시지 또는 오류 메시지
      */
     @PostMapping("/api/products/{isbn}/edit")
     @ResponseBody
@@ -363,7 +490,13 @@ public class AdminController {
     }
 
     /**
-     * ISBN 중복확인 API
+     * 관리자 ISBN 중복 확인 API
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 상품 등록 시 ISBN 코드 중복 여부 확인
+     *
+     * @param session HTTP 세션 (관리자 권한 확인용)
+     * @param isbn 확인할 ISBN 코드
+     * @return 중복 여부 결과 (duplicated: boolean)
      */
     @GetMapping("/api/product/check-isbn")
     @ResponseBody
@@ -376,7 +509,13 @@ public class AdminController {
     }
 
     /**
-     * 상품등록 API
+     * 관리자 신규 상품 등록 API
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 신규 도서 상품 정보를 데이터베이스에 등록
+     *
+     * @param session HTTP 세션 (관리자 권한 확인용)
+     * @param productData 등록할 상품 정보 (ISBN, 상품명, 저자, 가격 등)
+     * @return 등록 결과 메시지 또는 오류 메시지
      */
     @PostMapping("/api/product/register")
     @ResponseBody
@@ -412,7 +551,22 @@ public class AdminController {
     }
 
     /**
-     * 관리자 주문 조회 API
+     * 관리자 주문 내역 조회 API
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 전체 주문 내역을 검색 조건에 따라 페이지네이션으로 조회
+     *
+     * @param session HTTP 세션 (관리자 권한 확인용)
+     * @param sort 정렬 기준 (기본값: latest)
+     * @param page 페이지 번호 (기본값: 1)
+     * @param size 페이지 크기 (기본값: 30)
+     * @param orderId 주문번호 검색어
+     * @param userId 사용자 ID 검색어
+     * @param minAmount 최소 주문 금액
+     * @param maxAmount 최대 주문 금액
+     * @param startDate 조회 시작 날짜
+     * @param endDate 조회 종료 날짜
+     * @param orderStatus 주문 상태 필터
+     * @return 주문 내역 리스트 (AdminOrderPageResponse) 또는 권한 오류
      */
     @GetMapping("/api/orders")
     @ResponseBody
@@ -449,7 +603,15 @@ public class AdminController {
     }
 
     /**
-     * 주문 상태 변경 API
+     * 관리자 주문 상태 변경 API
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 특정 주문의 상태를 변경 (배송준비/배송완료 등)
+     *
+     * @param session HTTP 세션 (관리자 권한 확인용)
+     * @param orderId 상태를 변경할 주문 ID
+     * @param status 새로운 주문 상태
+     * @param idForAdmin 주문자 관리 ID
+     * @return 상태 변경 결과 메시지 또는 오류 메시지
      */
     @PostMapping("/api/orders/{orderId}/status")
     @ResponseBody
@@ -472,7 +634,12 @@ public class AdminController {
     }
     
     /**
-     * Order 테이블 테스트 API (임시)
+     * 관리자 주문 테이블 테스트 API (임시 디버깅용)
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 주문 테이블의 전체 데이터 상태를 확인하여 디버깅 정보 제공
+     *
+     * @param session HTTP 세션 (관리자 권한 확인용)
+     * @return 주문 테이블 통계 정보 (Map) 또는 오류 메시지
      */
     @GetMapping("/api/orders/test")
     @ResponseBody
@@ -507,7 +674,12 @@ public class AdminController {
     }
     
     /**
-     * 간단한 주문 조회 API (임시)
+     * 관리자 간단 주문 조회 API (임시 디버깅용)
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 간단한 주문 리스트를 제공 (복잡한 조인 없이)
+     *
+     * @param session HTTP 세션 (관리자 권한 확인용)
+     * @return 간단 주문 리스트 또는 오류 메시지
      */
     @GetMapping("/api/orders/simple")
     @ResponseBody
@@ -545,7 +717,21 @@ public class AdminController {
     }
     
     /**
-     * 회원조회 API - 실제 User 엔티티 사용
+     * 관리자 회원조회 API
+     *
+     * 비즈니스 로직: 관리자 권한 확인 후 전체 회원 정보를 검색 조건에 따라 페이지네이션으로 조회
+     *
+     * @param session HTTP 세션 (관리자 권한 확인용)
+     * @param sort 정렬 기준 (기본값: idAdminAsc)
+     * @param page 페이지 번호 (기본값: 1)
+     * @param size 페이지 크기 (기본값: 30)
+     * @param userName 회원명 검색어 (선택)
+     * @param userId 회원 ID 검색어 (선택)
+     * @param userGrade 회원 등급 (선택)
+     * @param userStatus 회원 상태 (선택)
+     * @param startDate 가입 시작일 (선택)
+     * @param endDate 가입 종료일 (선택)
+     * @return 회원 리스트 및 페이징 정보(Map) 또는 권한 오류
      */
     @GetMapping("/api/users")
     @ResponseBody

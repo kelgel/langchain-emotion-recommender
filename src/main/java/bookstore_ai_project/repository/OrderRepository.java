@@ -14,12 +14,14 @@ import java.time.LocalDateTime;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, OrderId> {
     
+    // - 관리자 ID로 주문 내역 조회 (최신순)
     @Query("SELECT o FROM Order o WHERE o.idForAdmin = :idForAdmin ORDER BY o.orderDate DESC")
     List<Order> findByIdForAdminOrderByOrderDateDesc(@Param("idForAdmin") String idForAdmin);
     
-    /**
-     * 관리자용 복합 검색 쿼리 (userAdminIds가 있는 경우)
-     */
+    /*
+      관리자용 복합 검색 쿼리 (userAdminIds가 있는 경우)
+      비즈니스 로직: 주문 내역 필터링(관리자별)
+    */
     @Query("SELECT o FROM Order o WHERE " +
            "(:orderId IS NULL OR :orderId = '' OR o.orderId LIKE %:orderId%) AND " +
            "(o.idForAdmin IN :userAdminIds) AND " +
@@ -38,9 +40,10 @@ public interface OrderRepository extends JpaRepository<Order, OrderId> {
             @Param("status") Order.OrderStatus status,
             Pageable pageable);
             
-    /**
-     * 관리자용 복합 검색 쿼리 (userAdminIds가 없는 경우)
-     */
+    /*
+      관리자용 복합 검색 쿼리 (userAdminIds가 없는 경우)
+      비즈니스 로직: 주문 내역 필터링(전체)
+    */
     @Query("SELECT o FROM Order o WHERE " +
            "(:orderId IS NULL OR :orderId = '' OR o.orderId LIKE %:orderId%) AND " +
            "(:minAmount IS NULL OR o.totalPaidPrice >= :minAmount) AND " +

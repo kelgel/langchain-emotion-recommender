@@ -16,11 +16,16 @@ import jakarta.servlet.http.HttpServletRequest;
 @RequestMapping("")
 public class LoginController {
 
+    /** 로그인 비즈니스 로직 서비스 */
     @Autowired
     private LoginService loginService;
 
     /**
      * 로그인 페이지 표시
+     *
+     * 비즈니스 로직: 로그인 화면을 반환
+     *
+     * @return 로그인 뷰 이름
      */
     @GetMapping("/login")
     public String loginPage() {
@@ -29,6 +34,14 @@ public class LoginController {
 
     /**
      * 로그인 처리
+     *
+     * 비즈니스 로직: 아이디, 비밀번호로 로그인 시도 및 세션 저장
+     *
+     * @param username 사용자 아이디
+     * @param password 비밀번호
+     * @param redirectUrl 로그인 후 이동할 URL
+     * @param session HTTP 세션
+     * @return 로그인 결과(LoginResponse)
      */
     @PostMapping("/login")
     @ResponseBody
@@ -84,6 +97,12 @@ public class LoginController {
 
     /**
      * 아이디 찾기 처리
+     *
+     * 비즈니스 로직: 이름, 이메일로 아이디 찾기
+     *
+     * @param name 사용자 이름
+     * @param email 사용자 이메일
+     * @return 결과(LoginResponse)
      */
     @PostMapping("/findId")
     @ResponseBody
@@ -111,6 +130,12 @@ public class LoginController {
 
     /**
      * 비밀번호 찾기 처리
+     *
+     * 비즈니스 로직: 아이디, 이름으로 비밀번호 찾기
+     *
+     * @param username 사용자 아이디
+     * @param name 사용자 이름
+     * @return 결과(LoginResponse)
      */
     @PostMapping("/findPassword")
     @ResponseBody
@@ -138,6 +163,12 @@ public class LoginController {
 
     /**
      * 로그아웃 처리
+     *
+     * 비즈니스 로직: 세션 무효화 및 리다이렉트
+     *
+     * @param session HTTP 세션
+     * @param request HTTP 요청 객체
+     * @return 리다이렉트 경로
      */
     @PostMapping("/logout")
     public String logout(HttpSession session, HttpServletRequest request) {
@@ -189,6 +220,12 @@ public class LoginController {
 
     /**
      * GET 방식 로그아웃 (헤더 링크용)
+     *
+     * 비즈니스 로직: GET 요청으로 로그아웃 처리
+     *
+     * @param session HTTP 세션
+     * @param request HTTP 요청 객체
+     * @return 리다이렉트 경로
      */
     @GetMapping("/logout")
     public String logoutGet(HttpSession session, HttpServletRequest request) {
@@ -196,7 +233,12 @@ public class LoginController {
     }
 
     /**
-     * 로그인 상태 확인 (AJAX용)
+     * 로그인 상태 확인 API (AJAX용)
+     *
+     * 비즈니스 로직: 세션에 저장된 로그인 상태를 반환
+     *
+     * @param session HTTP 세션
+     * @return 로그인 상태(LoginResponse)
      */
     @GetMapping("/api/auth/status")
     @ResponseBody
@@ -228,6 +270,12 @@ public class LoginController {
 
     /**
      * 비밀번호 확인(회원정보 수정 전)
+     *
+     * 비즈니스 로직: 입력한 비밀번호가 실제 비밀번호와 일치하는지 확인
+     *
+     * @param body password(비밀번호)
+     * @param session HTTP 세션
+     * @return 성공 여부 및 메시지
      */
     @PostMapping("/api/user/check-password")
     @ResponseBody

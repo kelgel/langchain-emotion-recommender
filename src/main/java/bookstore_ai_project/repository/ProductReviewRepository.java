@@ -8,7 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface ProductReviewRepository extends JpaRepository<ProductReview, Integer> {
-    // isbn으로 해당 상품의 리뷰 리스트 조회
+    // - ISBN으로 리뷰 전체 조회
     java.util.List<ProductReview> findAllByIsbn(String isbn);
     
     // 특정 사용자가 특정 상품에 리뷰를 작성했는지 확인

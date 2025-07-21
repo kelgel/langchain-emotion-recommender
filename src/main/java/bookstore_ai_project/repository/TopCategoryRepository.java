@@ -8,6 +8,7 @@ import java.util.List;
 
 @Repository
 public interface TopCategoryRepository extends JpaRepository<TopCategory, Integer> {
+
     // 모든 대분류 조회 (ID 순으로 정렬)
     List<TopCategory> findAllByOrderByTopCategory();
 }

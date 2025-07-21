@@ -22,21 +22,37 @@ import bookstore_ai_project.entity.ProductHistory;
 import org.springframework.data.jpa.domain.Specification;
 import jakarta.persistence.criteria.Predicate;
 
+/**
+ * 상품 관리 비즈니스 로직 서비스
+ *
+ * 비즈니스 로직: 도서 검색, 상품 리스트 조회, 인기상품/신착/베스트셀러 조회, 상품 리뷰 관리 등
+ */
 @Service
 public class ProductService {
+    /** 상품 데이터 접근 리포지토리 */
     @Autowired
     private ProductRepository productRepository;
 
+    /** 상품 리뷰 데이터 접근 리포지토리 */
     @Autowired
     private ProductReviewRepository productReviewRepository;
 
+    /** 재고 데이터 접근 리포지토리 */
     @Autowired
     private StockRepository stockRepository;
 
+    /** 상품 이력 데이터 접근 리포지토리 */
     @Autowired
     private ProductHistoryRepository productHistoryRepository;
 
-    // 인기검색어 Top N
+    /**
+     * 인기 상품 Top N 조회
+     *
+     * 비즈니스 로직: 검색 횟수 기준으로 인기 상품을 내림차순 정렬하여 상위 N개 반환
+     *
+     * @param limit 조회할 상품 개수
+     * @return 인기 상품 리스트 (ISBN, 상품명, 이미지, 저자, 가격, 검색횟수 포함)
+     */
     public List<ProductSimpleResponse> getPopularProducts(int limit) {
         return productRepository.findTopPopularProducts(PageRequest.of(0, limit)).stream()
                 .map(arr -> new ProductSimpleResponse(
@@ -51,7 +67,14 @@ public class ProductService {
                 )).collect(Collectors.toList());
     }
 
-    // 신상품 Top N
+    /**
+     * 신상품 Top N 조회
+     *
+     * 비즈니스 로직: 등록일 기준으로 최신 상품들을 내림차순 정렬하여 상위 N개 반환
+     *
+     * @param limit 조회할 상품 개수
+     * @return 신상품 리스트 (ISBN, 상품명, 이미지, 저자, 가격, 등록일 포함)
+     */
     public List<ProductSimpleResponse> getNewProducts(int limit) {
         return productRepository.findTopNewProducts(PageRequest.of(0, limit)).stream()
                 .map(arr -> new ProductSimpleResponse(
@@ -66,12 +89,28 @@ public class ProductService {
                 )).collect(Collectors.toList());
     }
 
+    /**
+     * 상품 검색 횟수 증가
+     *
+     * 비즈니스 로직: 상품 상세 페이지 진입 시 검색 횟수를 1 증가시켜 인기도 통계에 반영
+     *
+     * @param isbn 검색 횟수를 증가할 상품 ISBN
+     */
     @Transactional
     public void increaseSearchCount(String isbn) {
         productRepository.increaseSearchCount(isbn);
     }
 
-    // 기간별 베스트셀러 (주간/월간/연간)
+    /**
+     * 기간별 베스트셀러 조회 (주간/월간/연간)
+     *
+     * 비즈니스 로직: 지정된 기간 내 주문 수량이 많은 상품들을 베스트셀러로 선정하여 반환
+     *
+     * @param startDate 조회 시작 날짜
+     * @param endDate 조회 종료 날짜
+     * @param limit 조회할 상품 개수
+     * @return 베스트셀러 리스트 (ISBN, 상품명, 이미지, 저자, 가격, 주문수량 포함)
+     */
     public java.util.List<ProductSimpleResponse> getBestsellerByPeriod(LocalDateTime startDate, LocalDateTime endDate, int limit) {
         java.util.List<Object[]> result = productRepository.findBestsellerByPeriod(startDate, endDate, PageRequest.of(0, limit));
         return result.stream().map(arr -> {
@@ -92,17 +131,40 @@ public class ProductService {
         }).filter(java.util.Objects::nonNull).toList();
     }
 
-    // 상품 상세 정보 조회
+    /**
+     * 상품 상세 정보 조회
+     *
+     * 비즈니스 로직: ISBN으로 상품의 상세 정보를 조회
+     *
+     * @param isbn 조회할 상품의 ISBN
+     * @return 상품 엔티티
+     */
     public Product getProductDetailByIsbn(String isbn) {
         return productRepository.findByIsbn(isbn);
     }
 
-    // 상품 리뷰 리스트 조회
+    /**
+     * 상품 리뷰 리스트 조회
+     *
+     * 비즈니스 로직: ISBN으로 해당 상품의 모든 리뷰를 조회
+     *
+     * @param isbn 상품 ISBN
+     * @return 상품 리뷰 리스트
+     */
     public java.util.List<ProductReview> getProductReviewsByIsbn(String isbn) {
         return productReviewRepository.findAllByIsbn(isbn);
     }
 
-    // 상품 리뷰 리스트 조회 (최신순, soft delete 제외, 페이지네이션, 닉네임 포함)
+    /**
+     * 상품 리뷰 리스트 조회 (최신순, soft delete 제외, 페이지네이션, 닉네임 포함)
+     *
+     * 비즈니스 로직: ISBN으로 soft delete 제외, 최신순, 닉네임 포함, 페이지네이션된 리뷰 리스트 조회
+     *
+     * @param isbn 상품 ISBN
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @return 리뷰+닉네임 리스트 및 페이징 정보(Map)
+     */
     public java.util.Map<String, Object> getProductReviewsWithNicknameByIsbnPaged(String isbn, int page, int size) {
         if (size <= 0) size = 10;
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
@@ -129,13 +191,35 @@ public class ProductService {
         return result;
     }
     
-    // 기존 메서드 유지 (다른 곳에서 사용 중일 수 있음)
+    /**
+     * 기존 메서드 유지 (다른 곳에서 사용 중일 수 있음)
+     *
+     * 비즈니스 로직: ISBN으로 soft delete 제외, 최신순, 페이지네이션된 리뷰 리스트 조회
+     *
+     * @param isbn 상품 ISBN
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @return 상품 리뷰 페이지 객체
+     */
     public org.springframework.data.domain.Page<ProductReview> getProductReviewsByIsbnPaged(String isbn, int page, int size) {
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("regDate").descending());
         return productReviewRepository.findByIsbnAndDeleteDateIsNull(isbn, pageable);
     }
 
-    // 소분류별 상품 목록 조회 (페이지네이션, 정렬 포함)
+    /**
+     * 소분류별 상품 목록 조회 (페이지네이션, 정렬 포함)
+     *
+     * 비즈니스 로직: 소분류 카테고리별로 정렬, 페이지네이션 조건에 따라 상품 목록 조회
+     *
+     * @param lowCategoryId 소분류 카테고리 ID
+     * @param sort 정렬 기준
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @param title 제목 검색어
+     * @param author 저자 검색어
+     * @param publisher 출판사 검색어
+     * @return 상품 리스트 페이지 응답 DTO
+     */
     public ProductListPageResponse getProductsByLowCategory(Integer lowCategoryId, String sort, int page, int size, String title, String author, String publisher) {
         org.springframework.data.domain.PageRequest pageRequest;
         if (sort.equals("price_low")) {
@@ -188,7 +272,17 @@ public class ProductService {
         return new ProductListPageResponse(products, page, totalPages, totalItems, size, null, lowCategoryId);
     }
     
-    // 전체 상품 OR 검색 (제목/저자/출판사/ISBN 중 하나라도 포함)
+    /**
+     * 전체 상품 OR 검색 (제목/저자/출판사/ISBN 중 하나라도 포함)
+     *
+     * 비즈니스 로직: 검색어가 제목, 저자, 출판사, ISBN 중 하나라도 포함되면 해당 상품 반환
+     *
+     * @param q 검색어
+     * @param sort 정렬 기준
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @return 상품 리스트 페이지 응답 DTO
+     */
     public ProductListPageResponse searchProductsOr(String q, String sort, int page, int size) {
         org.springframework.data.domain.PageRequest pageRequest = getPageRequest(sort, page, size);
         Specification<Product> spec = (root, query, cb) -> {
@@ -208,7 +302,19 @@ public class ProductService {
         return new ProductListPageResponse(products, page, totalPages, totalItems, size, null, null);
     }
 
-    // 전체 상품 AND 검색 (제목+저자+출판사 모두 만족)
+    /**
+     * 전체 상품 AND 검색 (제목+저자+출판사 모두 만족)
+     *
+     * 비즈니스 로직: 제목, 저자, 출판사 모두 일치하는 상품만 반환
+     *
+     * @param bookTitle 제목
+     * @param author 저자
+     * @param publisher 출판사
+     * @param sort 정렬 기준
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @return 상품 리스트 페이지 응답 DTO
+     */
     public ProductListPageResponse searchProductsAnd(String bookTitle, String author, String publisher, String sort, int page, int size) {
         org.springframework.data.domain.PageRequest pageRequest = getPageRequest(sort, page, size);
         Specification<Product> spec = (root, query, cb) -> {
@@ -231,7 +337,20 @@ public class ProductService {
         return new ProductListPageResponse(products, page, totalPages, totalItems, size, null, null);
     }
 
-    // 일반검색 결과에서 추가 필터링 (q + bookTitle/author/publisher)
+    /**
+     * 일반검색 결과에서 추가 필터링 (q + bookTitle/author/publisher)
+     *
+     * 비즈니스 로직: 일반검색 결과에서 추가적으로 제목, 저자, 출판사로 필터링
+     *
+     * @param q 검색어
+     * @param bookTitle 제목
+     * @param author 저자
+     * @param publisher 출판사
+     * @param sort 정렬 기준
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @return 상품 리스트 페이지 응답 DTO
+     */
     public ProductListPageResponse searchProductsAdvanced(String q, String bookTitle, String author, String publisher, String sort, int page, int size) {
         // 판매량순인 경우 별도 처리
         if ("sales".equals(sort)) {
@@ -291,7 +410,16 @@ public class ProductService {
         return new ProductListPageResponse(products, page, totalPages, totalItems, size, null, null);
     }
 
-    // 정렬/페이지네이션 공통 처리
+    /**
+     * 정렬/페이지네이션 공통 처리
+     *
+     * 비즈니스 로직: 정렬 기준과 페이지 정보를 PageRequest로 변환
+     *
+     * @param sort 정렬 기준
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @return PageRequest 객체
+     */
     private org.springframework.data.domain.PageRequest getPageRequest(String sort, int page, int size) {
         if (sort.equals("price_low")) {
             return org.springframework.data.domain.PageRequest.of(page - 1, size, org.springframework.data.domain.Sort.by("price").ascending());
@@ -312,7 +440,14 @@ public class ProductService {
         }
     }
 
-    // Product 엔티티를 ProductListResponse로 변환
+    /**
+     * Product 엔티티를 ProductListResponse로 변환
+     *
+     * 비즈니스 로직: Product 엔티티를 상품 리스트 응답 DTO로 변환
+     *
+     * @param product 변환할 상품 엔티티
+     * @return 상품 리스트 응답 DTO
+     */
     private ProductListResponse convertToProductListResponse(Product product) {
         // 현재 재고량 조회
         List<Integer> stockList = stockRepository.findCurrentStockListByIsbn(product.getIsbn(), org.springframework.data.domain.PageRequest.of(0, 1));
@@ -335,7 +470,14 @@ public class ProductService {
         );
     }
     
-    // Object[] 배열을 ProductListResponse로 변환 (판매량순 조회용)
+    /**
+     * Object[] 배열을 ProductListResponse로 변환 (판매량순 조회용)
+     *
+     * 비즈니스 로직: 판매량순 native 쿼리 결과(Object[])를 상품 리스트 응답 DTO로 변환
+     *
+     * @param arr 변환할 Object[]
+     * @return 상품 리스트 응답 DTO
+     */
     private ProductListResponse convertToProductListResponseFromObjectArray(Object[] arr) {
         // arr[9]에 salesStatus가 있음
         
@@ -371,6 +513,10 @@ public class ProductService {
 
     /**
      * 전체 상품 개수 조회
+     *
+     * 비즈니스 로직: 전체 상품의 개수를 반환
+     *
+     * @return 전체 상품 개수(Long)
      */
     public long getTotalProductCount() {
         return productRepository.count();
@@ -378,6 +524,20 @@ public class ProductService {
 
     /**
      * 관리자용 상세검색 (판매상태, 날짜 범위 포함)
+     *
+     * 비즈니스 로직: 관리자 페이지에서 판매상태, 날짜 범위 등 다양한 조건으로 상품을 상세 검색
+     *
+     * @param q 통합 검색어
+     * @param title 제목 검색어
+     * @param author 저자 검색어
+     * @param publisher 출판사 검색어
+     * @param sort 정렬 기준
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @param salesStatus 판매 상태
+     * @param startDate 시작 날짜
+     * @param endDate 종료 날짜
+     * @return 상품 리스트 페이지 응답 DTO
      */
     public ProductListPageResponse searchProductsAdvanced(String q, String title, String author, String publisher, 
                                                          String sort, int page, int size, String salesStatus, 
@@ -568,6 +728,20 @@ public class ProductService {
 
     /**
      * 관리자용 카테고리별 상세검색 (판매상태, 날짜 범위 포함)
+     *
+     * 비즈니스 로직: 관리자 페이지에서 소분류별로 판매상태, 날짜 범위 등 다양한 조건으로 상품을 상세 검색
+     *
+     * @param lowCategoryId 소분류 카테고리 ID
+     * @param sort 정렬 기준
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @param title 제목 검색어
+     * @param author 저자 검색어
+     * @param publisher 출판사 검색어
+     * @param salesStatus 판매 상태
+     * @param startDate 시작 날짜
+     * @param endDate 종료 날짜
+     * @return 상품 리스트 페이지 응답 DTO
      */
     public ProductListPageResponse getProductsByLowCategoryAdvanced(Integer lowCategoryId, String sort, int page, int size,
                                                                    String title, String author, String publisher,
@@ -660,6 +834,14 @@ public class ProductService {
     
     /**
      * 관리자 필터링 적용 (판매량순에서 사용)
+     *
+     * 비즈니스 로직: 판매량순 native 쿼리 결과에 관리자용 필터(상태, 날짜 등) 적용
+     *
+     * @param products 상품 리스트
+     * @param salesStatus 판매 상태
+     * @param startDate 시작 날짜
+     * @param endDate 종료 날짜
+     * @return 필터링된 상품 리스트
      */
     private List<ProductListResponse> applyAdminFilters(List<ProductListResponse> products, String salesStatus, String startDate, String endDate) {
         return products.stream().filter(product -> {
@@ -701,6 +883,11 @@ public class ProductService {
     
     /**
      * 영문 판매상태를 enum으로 변환
+     *
+     * 비즈니스 로직: 영문 판매상태 문자열을 SalesStatus enum으로 변환
+     *
+     * @param status 영문 판매상태 문자열
+     * @return SalesStatus enum 또는 null
      */
     private Product.SalesStatus convertKoreanToSalesStatus(String status) {
         if (status == null || status.isBlank()) {
@@ -716,6 +903,12 @@ public class ProductService {
 
     /**
      * 상품 입고 처리
+     *
+     * 비즈니스 로직: 상품의 재고를 입고 수량만큼 증가
+     *
+     * @param isbn 입고할 상품의 ISBN
+     * @param quantity 입고 수량
+     * @return 없음
      */
     @Transactional
     public void stockIn(String isbn, int quantity) {
@@ -743,6 +936,12 @@ public class ProductService {
 
     /**
      * 상품 상태 변경
+     *
+     * 비즈니스 로직: 상품의 판매 상태를 변경하고 이력을 저장
+     *
+     * @param isbn 상태를 변경할 상품의 ISBN
+     * @param newStatus 새로운 판매 상태
+     * @return 없음
      */
     @Transactional
     public void changeProductStatus(String isbn, String newStatus) {
@@ -783,6 +982,12 @@ public class ProductService {
 
     /**
      * 상품 정보 수정 (가격 변경)
+     *
+     * 비즈니스 로직: 상품의 가격을 변경하고 이력을 저장
+     *
+     * @param isbn 가격을 변경할 상품의 ISBN
+     * @param newPrice 새로운 가격
+     * @return 없음
      */
     @Transactional
     public void editProduct(String isbn, Integer newPrice) {
@@ -814,11 +1019,26 @@ public class ProductService {
         productHistoryRepository.save(history);
     }
 
-    // ISBN 존재 여부 확인
+    /**
+     * ISBN 존재 여부 확인
+     *
+     * 비즈니스 로직: 해당 ISBN이 상품 테이블에 존재하는지 확인
+     *
+     * @param isbn 확인할 ISBN
+     * @return 존재 여부(boolean)
+     */
     public boolean existsById(String isbn) {
         return productRepository.existsByIsbn(isbn);
     }
 
+    /**
+     * 상품 등록 처리
+     *
+     * 비즈니스 로직: 전달받은 정보로 신규 상품을 등록
+     *
+     * @param body 등록할 상품 정보(Map)
+     * @return 없음
+     */
     @Transactional
     public void registerProduct(java.util.Map<String, Object> body) {
         // 필수값 검증
@@ -862,6 +1082,15 @@ public class ProductService {
         productRepository.save(product);
     }
 
+    /**
+     * 상품 전체 정보 수정 처리
+     *
+     * 비즈니스 로직: 전달받은 정보로 상품의 전체 정보를 수정
+     *
+     * @param originalIsbn 기존 ISBN
+     * @param body 수정할 정보(Map)
+     * @return 없음
+     */
     @Transactional
     public void updateProductAll(String originalIsbn, java.util.Map<String, Object> body) {
         // 상품 존재 확인

@@ -27,19 +27,32 @@ public class ProductController {
 
     private static final Logger logger = LoggerFactory.getLogger(ProductController.class);
 
+    /** 상품 관리 비즈니스 로직 서비스 */
     @Autowired
     private ProductService productService;
     
+    /** 카테고리 관리 비즈니스 로직 서비스 */
     @Autowired
     private CategoryService categoryService;
     
+    /** 소분류 데이터 접근 리포지토리 */
     @Autowired
     private LowCategoryRepository lowCategoryRepository;
 
+    /** 재고 데이터 접근 리포지토리 */
     @Autowired
     private StockRepository stockRepository;
 
-    // 상품 상세 페이지
+    /**
+     * 상품 상세 페이지 (PathVariable 방식)
+     *
+     * 비즈니스 로직: ISBN으로 상품 상세 정보를 조회하여 화면에 표시
+     *
+     * @param isbn 상품 ISBN
+     * @param page 리뷰 페이지 번호
+     * @param model 뷰 데이터 전달 모델
+     * @return 상품 상세 뷰 이름
+     */
     @GetMapping("/detail/{isbn}")
     public String productDetail(@PathVariable String isbn, @RequestParam(defaultValue = "0") int page, Model model) {
         productService.increaseSearchCount(isbn);
@@ -90,7 +103,16 @@ public class ProductController {
         return "product/product_detail";
     }
 
-    // (추가) QueryString 방식도 지원
+    /**
+     * 상품 상세 페이지 (QueryString 방식)
+     *
+     * 비즈니스 로직: 쿼리스트링으로 ISBN, page를 받아 상세 페이지로 이동
+     *
+     * @param isbn 상품 ISBN
+     * @param page 리뷰 페이지 번호
+     * @param model 뷰 데이터 전달 모델
+     * @return 상품 상세 뷰 이름
+     */
     @GetMapping("/detail")
     public String productDetailQuery(@RequestParam("isbn") String isbn,
                                      @RequestParam(value = "page", defaultValue = "0") int page,
@@ -98,7 +120,21 @@ public class ProductController {
         return productDetail(isbn, page, model); // page 파라미터 반영
     }
 
-    // 카테고리별 상품 목록 페이지
+    /**
+     * 소분류별 상품 목록 페이지
+     *
+     * 비즈니스 로직: 소분류 카테고리별 상품 리스트 조회 및 화면 표시
+     *
+     * @param categoryId 소분류 카테고리 ID
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @param sort 정렬 기준
+     * @param title 검색어(제목)
+     * @param author 검색어(저자)
+     * @param publisher 검색어(출판사)
+     * @param model 뷰 데이터 전달 모델
+     * @return 상품 리스트 뷰 이름
+     */
     @GetMapping("/category/low/{categoryId}")
     public String productList(@PathVariable Integer categoryId, 
                             @RequestParam(defaultValue = "1") int page,
@@ -149,7 +185,18 @@ public class ProductController {
         return "product/product_list";
     }
 
-    // 상품 전체 OR 검색 (일반검색)
+    /**
+     * 전체 상품 OR 검색(일반 검색)
+     *
+     * 비즈니스 로직: 검색어(q)로 전체 상품을 OR 조건으로 검색
+     *
+     * @param q 검색어
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @param sort 정렬 기준
+     * @param model 뷰 데이터 전달 모델
+     * @return 상품 리스트 뷰 이름
+     */
     @GetMapping("/search")
     public String searchProducts(
             @RequestParam(required = false) String q,
@@ -169,7 +216,21 @@ public class ProductController {
         return "product/product_list";
     }
 
-    // 상품 전체 AND 검색 (상세검색)
+    /**
+     * 전체 상품 AND 검색(상세 검색)
+     *
+     * 비즈니스 로직: 여러 검색 조건을 AND로 결합하여 상품 검색
+     *
+     * @param q 검색어
+     * @param bookTitle 제목
+     * @param author 저자
+     * @param publisher 출판사
+     * @param page 페이지 번호
+     * @param size 페이지 크기
+     * @param sort 정렬 기준
+     * @param model 뷰 데이터 전달 모델
+     * @return 상품 리스트 뷰 이름
+     */
     @GetMapping("/search-advanced")
     public String searchProductsAdvanced(
             @RequestParam(required = false) String q,
@@ -205,6 +266,14 @@ public class ProductController {
         return "product/product_list";
     }
 
+    /**
+     * 특정 ISBN의 최신 재고 조회 API
+     *
+     * 비즈니스 로직: 상품의 최신 재고 수량을 반환
+     *
+     * @param isbn 상품 ISBN
+     * @return 재고 수량
+     */
     @GetMapping("/api/stock/{isbn}")
     @ResponseBody
     public ResponseEntity<?> getLatestStock(@PathVariable String isbn) {
@@ -252,7 +321,14 @@ public class ProductController {
         }
     }
 
-    // 테스트용 간단한 재고 조회 API
+    /**
+     * 테스트용 간단한 재고 조회 API
+     *
+     * 비즈니스 로직: 하드코딩된 값과 DB에서 조회한 재고를 함께 반환
+     *
+     * @param isbn 상품 ISBN
+     * @return 재고 정보(Map)
+     */
     @GetMapping("/api/debug/stock/{isbn}")
     @ResponseBody
     public ResponseEntity<?> debugStock(@PathVariable String isbn) {

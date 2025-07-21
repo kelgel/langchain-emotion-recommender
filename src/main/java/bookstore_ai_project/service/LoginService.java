@@ -15,23 +15,36 @@ import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+/**
+ * 로그인/인증 관리 비즈니스 로직 서비스
+ *
+ * 비즈니스 로직: 사용자/관리자 로그인 처리, 휴면 계정 관리, 로그인 실패 기록 등
+ */
 @Service
 @Transactional
 public class LoginService {
 
     private static final Logger logger = LoggerFactory.getLogger(LoginService.class);
 
+    /** 사용자 데이터 접근 리포지토리 */
     @Autowired
     private UserRepository userRepository;
 
+    /** 관리자 데이터 접근 리포지토리 */
     @Autowired
     private AdminRepository adminRepository;
 
+    /** 메일 전송 서비스 */
     @Autowired
     private MailService mailService;
 
     /**
-     * 로그인 처리 (평문 비밀번호 비교)
+     * 사용자/관리자 로그인 인증 처리
+     *
+     * 비즈니스 로직: 아이디와 비밀번호 평문 비교, 휴면 상태 확인, 로그인 실패 기록 처리
+     *
+     * @param loginRequest 로그인 요청 데이터 (username, password)
+     * @return 로그인 결과 및 사용자 정보 (LoginResponse)
      */
     public LoginResponse authenticate(LoginRequest loginRequest) {
         try {
@@ -98,6 +111,11 @@ public class LoginService {
 
     /**
      * 사용자 상태 검증
+     *
+     * 비즈니스 로직: 사용자의 상태(활성, 탈퇴, 비활성, 휴면 등)를 확인하여 로그인 가능 여부를 판단
+     *
+     * @param user 상태를 검증할 User 엔티티
+     * @return 상태에 따른 LoginResponse
      */
     private LoginResponse validateUserStatus(User user) {
         logger.info("=== 사용자 상태 검증: {} ===", user.getUserStatus());
@@ -128,6 +146,10 @@ public class LoginService {
 
     /**
      * 휴면 상태 체크 및 업데이트
+     *
+     * 비즈니스 로직: 최근 6개월간 로그인 이력이 없는 사용자를 휴면 상태로 일괄 변경
+     *
+     * @return 없음
      */
     public void checkAndUpdateDormantUsers() {
         try {
@@ -147,6 +169,12 @@ public class LoginService {
 
     /**
      * 아이디 찾기
+     *
+     * 비즈니스 로직: 이름과 이메일로 회원을 찾아 아이디(마스킹 처리)를 반환
+     *
+     * @param name 회원 이름
+     * @param email 회원 이메일
+     * @return 아이디(마스킹) 또는 실패 메시지의 LoginResponse
      */
     @Transactional(readOnly = true)
     public LoginResponse findUserId(String name, String email) {
@@ -191,6 +219,12 @@ public class LoginService {
 
     /**
      * 비밀번호 찾기 (임시 비밀번호 발급)
+     *
+     * 비즈니스 로직: 아이디와 이름으로 회원을 찾아 임시 비밀번호를 발급 및 이메일로 전송
+     *
+     * @param username 회원 아이디
+     * @param name 회원 이름
+     * @return 처리 결과 메시지의 LoginResponse
      */
     @Transactional
     public LoginResponse findPassword(String username, String name) {
@@ -256,6 +290,11 @@ public class LoginService {
 
     /**
      * 아이디 마스킹 처리
+     *
+     * 비즈니스 로직: 아이디 일부를 *로 마스킹하여 반환
+     *
+     * @param userId 마스킹할 아이디
+     * @return 마스킹된 아이디 문자열
      */
     private String maskUserId(String userId) {
         if (userId == null || userId.length() <= 3) {
@@ -271,6 +310,11 @@ public class LoginService {
 
     /**
      * 관리자 로그인 처리
+     *
+     * 비즈니스 로직: 관리자 아이디와 비밀번호를 검증하여 로그인 처리
+     *
+     * @param loginRequest 관리자 로그인 요청 정보
+     * @return 처리 결과 메시지의 LoginResponse
      */
     public LoginResponse authenticateAdmin(LoginRequest loginRequest) {
         try {
@@ -316,6 +360,10 @@ public class LoginService {
 
     /**
      * 임시 비밀번호 생성 (단순화)
+     *
+     * 비즈니스 로직: 간단한 임시 비밀번호를 생성하여 반환
+     *
+     * @return 임시 비밀번호 문자열
      */
     private String generateTempPassword() {
         return "temp123!";  // 간단한 임시 비밀번호
