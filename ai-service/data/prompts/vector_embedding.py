@@ -94,8 +94,11 @@ DB_CONFIG = load_db_config_from_properties()
 # OpenAI 임베딩 모델 초기화
 embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
 
-# Chroma 벡터스토어 설정
-PERSIST_DIRECTORY = "./chroma_db"
+# Chroma 벡터스토어 설정 - 프로젝트 구조에 맞게 수정
+current_dir = os.path.dirname(os.path.abspath(__file__))
+data_dir = os.path.dirname(current_dir)  # prompts의 부모 = data
+PERSIST_DIRECTORY = os.path.join(data_dir, "chroma_db")
+
 vectorstore = Chroma(
     collection_name="bookstore_collection",
     embedding_function=embeddings,

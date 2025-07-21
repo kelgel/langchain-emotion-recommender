@@ -16,10 +16,17 @@ if not openai_key:
     raise ValueError("OPENAI_API_KEY 환경변수를 설정해주세요.")
 
 class BookRecommendationEngine:
-    def __init__(self, persist_directory="./chroma_db"):
+    def __init__(self, persist_directory=None):
         """검색 엔진 초기화"""
         self.embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
         self.llm = ChatOpenAI(temperature=0.3, model="gpt-3.5-turbo")
+        
+        # ChromaDB 경로 설정 - 프로젝트 구조에 맞게 수정
+        if persist_directory is None:
+            # 현재 파일 위치에서 데이터 디렉토리로 상대 경로 설정
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            data_dir = os.path.dirname(current_dir)  # prompts의 부모 = data
+            persist_directory = os.path.join(data_dir, "chroma_db")
         
         # 벡터스토어 로드
         self.vectorstore = Chroma(

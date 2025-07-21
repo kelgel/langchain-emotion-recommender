@@ -8,7 +8,10 @@ load_dotenv()
 
 def check_vector_database():
     """벡터 데이터베이스 상태 확인"""
-    persist_directory = "./chroma_db"
+    # ChromaDB 경로 설정 - 프로젝트 구조에 맞게 수정
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.dirname(current_dir)  # prompts의 부모 = data
+    persist_directory = os.path.join(data_dir, "chroma_db")
 
     print("🔍 벡터 데이터베이스 상태 확인")
     print(f"저장 위치: {os.path.abspath(persist_directory)}")
@@ -67,7 +70,10 @@ def check_vector_database():
 def sample_search():
     """샘플 검색 테스트"""
     print("\n🔍 샘플 검색 테스트")
-    persist_directory = "./chroma_db"
+    # ChromaDB 경로 설정 - 프로젝트 구조에 맞게 수정
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    data_dir = os.path.dirname(current_dir)  # prompts의 부모 = data
+    persist_directory = os.path.join(data_dir, "chroma_db")
 
     try:
         embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
