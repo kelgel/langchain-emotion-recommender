@@ -96,9 +96,9 @@ def sample_search():
                 low_cat = metadata.get('low_category_name', '')
                 if top_cat or mid_cat or low_cat:
                     category_path = ' > '.join(filter(None, [top_cat, mid_cat, low_cat]))
-                    print(f"     🗂️  카테고리: {category_path}")
+                    print(f"     🗂️ 카테고리: {category_path}")
                 print(f"     📖 제목: {metadata.get('product_name', 'N/A')}")
-                print(f"     ✍️  작가: {metadata.get('author', 'N/A')}")
+                print(f"     ✍️ 작가: {metadata.get('author', 'N/A')}")
                 print(f"     🏢 출판사: {metadata.get('publisher', 'N/A')}")
                 print(f"     💰 가격: {metadata.get('price', 'N/A')}원")
                 print(f"     ⭐ 평점: {metadata.get('rate', 'N/A')}")
