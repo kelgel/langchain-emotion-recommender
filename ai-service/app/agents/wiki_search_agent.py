@@ -1,0 +1,204 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+위키피디아 검색 에이전트 - Agent 계층
+세션 관리와 다른 에이전트와의 협업을 담당
+"""
+
+from typing import Dict, Any
+import sys
+import os
+import openai
+import json
+
+# .env 파일 로드
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+# 명시적 경로 설정
+current_dir = os.path.dirname(os.path.abspath(__file__))
+chains_dir = os.path.join(os.path.dirname(current_dir), 'chains')
+
+sys.path.insert(0, chains_dir)
+
+from wiki_search_chain import WikiSearchChain
+
+
+class WikiSearchAgent:
+    """위키피디아 검색 에이전트 클래스."""
+
+    def __init__(self):
+        """에이전트를 초기화하고 체인과 세션 상태를 설정."""
+        self.chain = WikiSearchChain()
+        self.conversation_state = {
+            'current_author': None,
+            'waiting_for_clarification': False,
+            'last_search_result': None,
+            'conversation_history': []
+        }
+        
+        # OpenAI 클라이언트 초기화
+        self.llm_client = None
+        try:
+            self.llm_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        except Exception:
+            pass
+
+    def process(self, query: str) -> Dict[str, Any]:
+        """사용자 쿼리를 처리하고 세션 상태를 관리."""
+        try:
+            # 대화 히스토리에 쿼리 추가
+            self._add_to_history('user', query)
+            
+            # 체인에서 처리
+            result = self.chain.execute(query, self.conversation_state)
+            
+            # 컨텍스트 업데이트
+            if result.get('update_context'):
+                # 리셋 신호가 있으면 완전히 초기화
+                if result['update_context'].get('reset_conversation'):
+                    self.reset_conversation()
+                    # 새로운 작가 정보로 업데이트
+                    if 'current_author' in result['update_context']:
+                        self.conversation_state['current_author'] = result['update_context']['current_author']
+                    if 'waiting_for_clarification' in result['update_context']:
+                        self.conversation_state['waiting_for_clarification'] = result['update_context']['waiting_for_clarification']
+                else:
+                    self._update_conversation_state(result['update_context'])
+            
+            # 응답 히스토리에 추가
+            self._add_to_history('assistant', result.get('message', ''))
+            
+            # 결과 포맷팅
+            return {
+                'success': result['action'] != 'error',
+                'message': result.get('message', ''),
+                'action': result['action'],
+                'should_continue': result['action'] in ['ask_clarification', 'show_result'],
+                'context_updated': bool(result.get('update_context')),
+                'agent_name': 'wiki_search'
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'message': '죄송합니다. 검색 중 오류가 발생했습니다. 다시 시도해주세요.',
+                'action': 'error',
+                'should_continue': False,
+                'context_updated': False,
+                'error': str(e),
+                'agent_name': 'wiki_search'
+            }
+
+    def get_conversation_state(self) -> Dict[str, Any]:
+        """현재 대화 상태를 반환."""
+        return self.conversation_state.copy()
+
+    def reset_conversation(self):
+        """대화 상태를 초기화."""
+        self.conversation_state = {
+            'current_author': None,
+            'waiting_for_clarification': False,
+            'last_search_result': None,
+            'conversation_history': []
+        }
+
+    def is_conversation_active(self) -> bool:
+        """현재 대화가 진행 중인지 확인."""
+        return self.conversation_state.get('waiting_for_clarification', False)
+
+    def can_handle_query(self, query: str) -> bool:
+        """이 에이전트가 주어진 쿼리를 처리할 수 있는지 판단 (LLM 기반)."""
+        # 현재 대화가 진행 중이면 우선적으로 처리
+        if self.is_conversation_active():
+            return True
+        
+        if self.llm_client:
+            return self._llm_can_handle_query(query)
+        else:
+            return self._fallback_can_handle_query(query)
+    
+    def _llm_can_handle_query(self, query: str) -> bool:
+        """LLM을 사용한 쿼리 처리 가능 여부 판단."""
+        try:
+            system_prompt = """당신은 쿼리 라우터입니다. 주어진 질문이 위키피디아 검색 에이전트(작가, 인물 정보 검색)가 처리해야 할 질문인지 판단하세요.
+
+위키피디아 검색 에이전트가 처리하는 질문들:
+- 작가, 소설가, 시인에 대한 정보
+- 인물의 학력, 출생, 작품 정보
+- "누구인지 알려줘" 같은 인물 정보 요청
+
+다른 에이전트가 처리하는 질문들:
+- 주문 조회, 배송 상태
+- 상품 재고, 가격 정보
+- 결제, 환불 관련
+
+JSON 형식으로 응답하세요:
+{
+    "can_handle": true/false,
+    "confidence": 0.0-1.0,
+    "reasoning": "판단 이유"
+}"""
+            
+            response = self.llm_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"질문: {query}"}
+                ],
+                temperature=0.1,
+                max_tokens=200
+            )
+            
+            result = json.loads(response.choices[0].message.content)
+            return result.get('can_handle', False)
+            
+        except Exception as e:
+            # LLM 실패시 폴백
+            return self._fallback_can_handle_query(query)
+    
+    def _fallback_can_handle_query(self, query: str) -> bool:
+        """기존 키워드 기반 처리 가능 여부 판단 (폴백용)."""
+        author_keywords = ['작가', '소설가', '시인', '저자', '작품', '알려줘', '정보', '누구']
+        return any(keyword in query.lower() for keyword in author_keywords)
+
+    def get_status_info(self) -> Dict[str, Any]:
+        """에이전트 상태 정보를 반환."""
+        return {
+            'agent_name': 'wiki_search',
+            'is_active': self.is_conversation_active(),
+            'current_author': self.conversation_state.get('current_author'),
+            'conversation_turns': len(self.conversation_state.get('conversation_history', [])),
+            'waiting_for_input': self.conversation_state.get('waiting_for_clarification', False)
+        }
+
+    def _update_conversation_state(self, updates: Dict[str, Any]):
+        """대화 상태를 업데이트."""
+        for key, value in updates.items():
+            if key in self.conversation_state:
+                self.conversation_state[key] = value
+
+    def _add_to_history(self, role: str, message: str):
+        """대화 히스토리에 메시지를 추가."""
+        if 'conversation_history' not in self.conversation_state:
+            self.conversation_state['conversation_history'] = []
+        
+        self.conversation_state['conversation_history'].append({
+            'role': role,
+            'message': message,
+            'timestamp': self._get_current_timestamp()
+        })
+        
+        # 히스토리 길이 제한 (최근 20개만 유지)
+        if len(self.conversation_state['conversation_history']) > 20:
+            self.conversation_state['conversation_history'] = \
+                self.conversation_state['conversation_history'][-20:]
+
+    def _get_current_timestamp(self) -> str:
+        """현재 타임스탬프를 문자열로 반환."""
+        from datetime import datetime
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
