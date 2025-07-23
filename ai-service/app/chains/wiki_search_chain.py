@@ -9,8 +9,15 @@
 from typing import Dict, Any
 import sys
 import os
-import openai
 import json
+
+# OpenAI 모듈 안전하게 import
+try:
+    import openai
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+    openai = None
 
 # .env 파일 로드
 try:
@@ -42,11 +49,12 @@ class WikiSearchChain:
         
         # OpenAI 클라이언트 초기화 (환경변수에서 API 키 로드)
         self.llm_client = None
-        try:
-            self.llm_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-        except Exception:
-            # API 키가 없으면 폴백 모드로 동작
-            pass
+        if OPENAI_AVAILABLE:
+            try:
+                self.llm_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+            except Exception:
+                # API 키가 없으면 폴백 모드로 동작
+                pass
 
     def execute(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -83,7 +91,17 @@ class WikiSearchChain:
         - 검색 결과 없음
         - 동명이인 (작가가 아닌 결과)
         """
-        # 1단계: 질문 의도 분석 (LLM 기반)
+        # 1단계: 새로운 작가명 언급 확인 (우선순위 최고)
+        if self._is_new_author_mentioned(query, context):
+            # 새로운 작가가 언급되면 맥락을 무시하고 새 검색
+            pass  # LLM 분석으로 진행
+        else:
+            # 2단계: 대화 맥락 우선 확인 (코드 레벨)
+            context_check = self._check_context_priority(query, context)
+            if context_check['should_use_context']:
+                return self._handle_context_question(query, context)
+        
+        # 3단계: 질문 의도 분석 (LLM 기반)
         query_intent = self._analyze_query_intent(query, context)
         
         # 디버깅 정보를 사용자에게 표시 (임시)
@@ -149,8 +167,13 @@ class WikiSearchChain:
 
         # 검색 성공 → 작가인지 검증
         if self._is_author_result(search_result):
-            # 특정 정보 요청이 있는지 확인
-            specific_info = self._extract_specific_info_request(query)
+            # LLM에서 특정 정보 요청이 있는지 먼저 확인
+            llm_specific_info = query_intent.get('specific_info_request')
+            # 기존 방식도 확인 (폴백)
+            fallback_specific_info = self._extract_specific_info_request(query)
+            
+            specific_info = llm_specific_info or fallback_specific_info
+            
             if specific_info:
                 # 특정 정보 추출하여 답변
                 answer = self._extract_specific_answer(search_result, specific_info, author_name)
@@ -340,7 +363,7 @@ class WikiSearchChain:
         if any(word in query_lower for word in ['작가', '저자', '지은이', '쓴이']) and \
            not any(word in query_lower for word in ['누구', '알려줘', '정보', '대학', '출생', '나이', '언제', '어디']):
             book_title = query_lower
-            for word in ['작가', '저자', '지은이', '쓴이', '정보']:
+            for word in ['작가', '누가', '저자', '지은이', '쓴이', '정보']:
                 book_title = book_title.replace(word, '').strip()
             return {'type': 'book_to_author', 'book_title': book_title}
         
@@ -455,6 +478,11 @@ class WikiSearchChain:
         
         # 질문 유형에 따른 구체적 답변 생성
         specific_answer = self._extract_context_specific_answer(query, last_result)
+        
+        # 디버깅: 왜 구체적 답변을 찾지 못했는지 확인
+        if not specific_answer:
+            print(f"[DEBUG] 구체적 답변 찾기 실패: '{query}'")
+            print(f"[DEBUG] 검색 결과 일부: {last_result.get('content', '')[:200]}...")
         
         if specific_answer:
             return {
@@ -856,6 +884,11 @@ JSON 형식으로 응답:
             # 출생 정보 추출
             birth_info = self._find_birth_info(content)
             url = search_result.get('url', '').replace('(', '%28').replace(')', '%29')
+            
+            # 디버깅
+            print(f"[DEBUG] birth 정보 추출: '{birth_info}'")
+            print(f"[DEBUG] 분석 텍스트 일부: {content[:300]}...")
+            
             if birth_info:
                 return "{}은(는) {}에 태어났습니다.\n\n**상세 정보**: {}".format(
                     title, birth_info, url
@@ -957,9 +990,54 @@ JSON 형식으로 응답:
         return None
 
     def _find_birth_info(self, content: str) -> str:
-        """텍스트에서 출생 정보 추출."""
-        import re
+        """텍스트에서 출생 정보 추출 - LLM 기반."""
+        # LLM으로 먼저 시도
+        if self.llm_client:
+            try:
+                system_prompt = """주어진 텍스트에서 인물의 출생 정보를 추출하세요.
+
+JSON 형식으로 응답:
+{
+    "birth_date": "출생일",
+    "birth_year": "출생년도",
+    "age_info": "나이 관련 정보",
+    "found": true/false
+}
+
+추출 규칙:
+- 출생일, 출생년도, 현재 나이 등 생년월일 관련 정보만 추출
+- 정확한 날짜 형식으로 표시 (예: 1975년 8월 27일)
+- 나이 계산이 가능한 경우 현재 나이도 포함
+- 정보가 없으면 found: false"""
+
+                response = self.llm_client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"텍스트: {content[:2000]}"}
+                    ],
+                    temperature=0.1
+                )
+                
+                result = json.loads(response.choices[0].message.content)
+                print(f"[DEBUG] LLM birth 추출 결과: {result}")
+                
+                if result.get('found'):
+                    birth_date = result.get('birth_date', '')
+                    age_info = result.get('age_info', '')
+                    
+                    if birth_date and age_info:
+                        return f"{birth_date} ({age_info})"
+                    elif birth_date:
+                        return birth_date
+                    elif age_info:
+                        return age_info
+                        
+            except Exception as e:
+                print(f"[DEBUG] LLM birth 추출 실패: {e}")
         
+        # LLM 실패시 정규식 폴백
+        import re
         patterns = [
             r'(\d{4}년\s*\d{1,2}월\s*\d{1,2}일)',
             r'(\d{4}\.\s*\d{1,2}\.\s*\d{1,2})',
@@ -1156,3 +1234,94 @@ JSON 형식으로 응답:
             return '\n'.join(['- ' + award for award in awards[:5]])
         
         return None
+
+    def _check_context_priority(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        """대화 맥락을 우선적으로 확인하는 코드 레벨 로직."""
+        
+        # 1. 현재 작가가 설정되어 있는지 확인
+        current_author = context.get('current_author')
+        has_recent_conversation = bool(context.get('conversation_history'))
+        
+        # 2. 질문에 작가명이 포함되어 있는지 확인
+        has_author_name = self._contains_author_name(query)
+        
+        # 3. 맥락 키워드 확인
+        context_keywords = [
+            '나이', '대학', '고등학교', '학교', '작품', '대표작품', 
+            '수상', '언제', '어디', '몇살', '학력', '졸업'
+        ]
+        has_context_keyword = any(keyword in query for keyword in context_keywords)
+        
+        # 4. 우선순위 판단 로직
+        should_use_context = (
+            current_author and  # 현재 작가가 설정되어 있고
+            not has_author_name and  # 질문에 새로운 작가명이 없고  
+            has_context_keyword and  # 맥락 키워드가 있을 때
+            has_recent_conversation  # 최근 대화가 있을 때
+        )
+        
+        return {
+            'should_use_context': should_use_context,
+            'current_author': current_author,
+            'has_author_name': has_author_name,
+            'has_context_keyword': has_context_keyword,
+            'reasoning': f"현재작가:{current_author}, 작가명포함:{has_author_name}, 맥락키워드:{has_context_keyword}"
+        }
+    
+    def _contains_author_name(self, query: str) -> bool:
+        """질문에 작가명이 포함되어 있는지 확인."""
+        import re
+        
+        # 작품명→작가명 패턴 확인 (우선순위)
+        book_to_author_patterns = [
+            r'(.+)\s+(작가|저자)(?:가|는|을|를)?\s*(누구|뭐)',  # "토지 작가가 누구야"
+            r'(.+)\s+(쓴|지은)\s*(사람|작가|저자)',  # "토지 쓴 사람"
+        ]
+        
+        for pattern in book_to_author_patterns:
+            match = re.search(pattern, query)
+            if match:
+                return False  # 이는 작품명이므로 작가명이 아님
+        
+        # 명시적 작가명 언급 패턴
+        explicit_author_patterns = [
+            r'(김영하|한강|무라카미\s*하루키|박민규|정유정)',  # 알려진 작가명
+            r'[가-힣]{2,3}\s+[가-힣]{2,3}',  # 한국식 성명 (김영하, 이문열 등)
+        ]
+        
+        # 작가명이 명시적으로 언급된 경우만 True
+        for pattern in explicit_author_patterns:
+            if re.search(pattern, query):
+                # 작가 관련 질문인지 확인
+                if any(word in query for word in ['작가', '저자', '작품', '대표작', '누구', '알려줘', '대해', '몇살', '나이', '대학', '학교']):
+                    return True
+        
+        return False
+
+    def _is_new_author_mentioned(self, query: str, context: Dict[str, Any]) -> bool:
+        """새로운 작가가 언급되었는지 확인."""
+        import re
+        
+        current_author = context.get('current_author') or ''
+        if current_author:
+            current_author = current_author.strip()
+        
+        # 명시적 작가명 패턴 (띄어쓰기 유연하게)
+        author_patterns = [
+            r'(김영하|한강|무라카미\s*하루키|박민규|정유정|이문열|조석|박완서)(?:\s*작가)?',  # 알려진 작가명 + 선택적 "작가"
+            r'([가-힣]{2,4})(?:\s*작가)',  # "작가"가 붙은 이름
+            r'[가-힣]{2,3}\s+[가-힣]{2,3}',  # 한국식 성명 패턴
+        ]
+        
+        for pattern in author_patterns:
+            matches = re.findall(pattern, query)
+            for match in matches:
+                mentioned_author = match.strip()
+                # 현재 대화 중인 작가와 다른 작가가 언급된 경우
+                if mentioned_author and mentioned_author != current_author:
+                    # 작가 관련 질문인지 확인
+                    author_keywords = ['작가', '저자', '작품', '대표작', '누구', '알려줘', '대해', '몇살', '나이', '대학', '학교', '수상', '상', '경력', '이력', '정보']
+                    if any(word in query for word in author_keywords):
+                        return True
+        
+        return False
