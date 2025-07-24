@@ -11,6 +11,18 @@ import sys
 import os
 import json
 
+# 모델 및 유틸 import를 위한 경로 설정
+current_dir = os.path.dirname(os.path.abspath(__file__))
+models_dir = os.path.join(os.path.dirname(current_dir), 'models')
+utils_dir = os.path.join(os.path.dirname(current_dir), 'utils')
+sys.path.insert(0, models_dir)
+sys.path.insert(0, utils_dir)
+
+from wiki_query_intent import WikiQueryIntent, IntentType, InfoType
+from wiki_text_processing import WikiTextProcessor
+from wiki_information_extractor import WikiInformationExtractor
+from wiki_pattern_matcher import WikiPatternMatcher
+
 # OpenAI 모듈 안전하게 import
 try:
     import openai
@@ -106,7 +118,7 @@ class WikiSearchChain:
         elif query_intent.get('extracted_keywords') and len(query_intent.get('extracted_keywords', [])) > 0:
             author_name = query_intent['extracted_keywords'][0]
         else:
-            author_name = self._extract_author_name(query)
+            author_name = WikiTextProcessor.extract_author_name(query, self.llm_client)
         if not author_name:
             return {
                 'action': 'error',
@@ -262,25 +274,27 @@ class WikiSearchChain:
             
             result = json.loads(response.choices[0].message.content)
             
-            # 결과를 기존 형식에 맞게 변환
+            # WikiQueryIntent 모델 사용
             if result.get('intent_type') == 'book_to_author':
-                return {
-                    'type': 'book_to_author', 
-                    'book_title': result.get('extracted_keywords', [query])[0]
-                }
+                intent = WikiQueryIntent.create_book_to_author(
+                    query, result.get('extracted_keywords', [query])[0]
+                )
             elif result.get('intent_type') == 'context_question':
-                return {
-                    'type': 'context_question',
-                    'question': query,
-                    'specific_info': result.get('specific_info_request')
-                }
+                info_type = InfoType.GENERAL
+                if result.get('specific_info_request'):
+                    info_map = {
+                        'university': InfoType.UNIVERSITY, 'birth': InfoType.BIRTH,
+                        'death': InfoType.DEATH, 'school': InfoType.SCHOOL,
+                        'works': InfoType.WORKS, 'awards': InfoType.AWARDS
+                    }
+                    info_type = info_map.get(result.get('specific_info_request'), InfoType.GENERAL)
+                intent = WikiQueryIntent.create_context_question(query, info_type)
             else:
-                return {
-                    'type': 'author_search',
-                    'query': query,
-                    'specific_info': result.get('specific_info_request'),
-                    'keywords': result.get('extracted_keywords', [])
-                }
+                intent = WikiQueryIntent.create_author_search(
+                    query, result.get('extracted_keywords', [])
+                )
+            
+            return intent.to_dict()
                 
         except Exception as e:
             # LLM 실패시 폴백
@@ -312,12 +326,12 @@ class WikiSearchChain:
         
         # 작가 관련 키워드나 인명 질문 패턴이 없으면 처리 불가
         if not has_author_keyword and not has_name_question:
-            return {'type': 'unknown', 'query': query}
+            return WikiQueryIntent.create_author_search(query, []).to_dict()
         
         # 복합 질문 우선 체크 (작가 + 세부정보)
         if any(word in query_lower for word in ['작가', '저자']) and \
            any(word in query_lower for word in ['대학', '출생', '나이', '언제', '어디']):
-            return {'type': 'new_search', 'query': query}
+            return WikiQueryIntent.create_author_search(query, []).to_dict()
         
         # 단순 작품 -> 작가 질문 패턴  
         if any(word in query_lower for word in ['작가', '저자', '지은이', '쓴이', '쓴']) and \
@@ -325,7 +339,7 @@ class WikiSearchChain:
             book_title = query_lower
             for word in ['작가', '누가', '저자', '지은이', '쓴이', '쓴', '정보', '누구야', '누구']:
                 book_title = book_title.replace(word, '').strip()
-            return {'type': 'book_to_author', 'book_title': book_title}
+            return WikiQueryIntent.create_book_to_author(query, book_title).to_dict()
         
         # 맥락 기반 질문 - 더 포괄적으로
         import re
@@ -351,16 +365,29 @@ class WikiSearchChain:
         # 작가명이 포함된 질문인지 확인
         has_author_in_query = any(re.search(pattern, query_lower) for pattern in author_in_query_patterns)
         if has_author_in_query:
-            return {'type': 'new_search', 'query': query}
+            return WikiQueryIntent.create_author_search(query, []).to_dict()
         
         # 패턴 매칭 또는 키워드 + 짧은 질문
         has_context_pattern = any(re.search(pattern, query_lower) for pattern in context_patterns)
         has_context_keyword = any(word in query_lower for word in context_keywords) and len(query.split()) <= 6
         
         if has_context_pattern or has_context_keyword:
-            return {'type': 'context_question', 'question': query}
+            # 구체적인 정보 타입 결정
+            info_type = InfoType.GENERAL
+            if any(word in query_lower for word in ['대학', '대학교']):
+                info_type = InfoType.UNIVERSITY
+            elif any(word in query_lower for word in ['출생', '태어', '생일']):
+                info_type = InfoType.BIRTH
+            elif any(word in query_lower for word in ['학교', '고등학교', '중학교']):
+                info_type = InfoType.SCHOOL
+            elif any(word in query_lower for word in ['작품', '책', '소설']):
+                info_type = InfoType.WORKS
+            elif any(word in query_lower for word in ['수상', '상', '시상']):
+                info_type = InfoType.AWARDS
+                
+            return WikiQueryIntent.create_context_question(query, info_type).to_dict()
         
-        return {'type': 'new_search', 'query': query}
+        return WikiQueryIntent.create_author_search(query, []).to_dict()
 
     def _format_intent_query(self, query: str, context: Dict[str, Any] = None) -> str:
         """LLM 의도 분석을 위한 쿼리 포맷."""
@@ -476,155 +503,15 @@ class WikiSearchChain:
             'update_context': context
         }
 
-    def _extract_author_name(self, query: str) -> str:
-        """쿼리에서 작가명을 추출 - 개선된 방식."""
-        import re
-        
-        # 먼저 LLM으로 시도
-        if self.llm_client:
-            try:
-                system_prompt = """사용자 질문에서 작가명만 추출하세요.
-
-JSON 형식으로 응답:
-{
-    "author_name": "추출된 작가명",
-    "confidence": 0.0-1.0
-}
-
-예시:
-"한강이 누구야" -> {"author_name": "한강", "confidence": 0.9}
-"무라카미 하루키 작가 알려줘" -> {"author_name": "무라카미 하루키", "confidence": 0.95}
-"개미 쓴 작가 누구야" -> {"author_name": null, "confidence": 0.1}"""
-
-                response = self.llm_client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": query}
-                    ],
-                    temperature=0.1,
-                    max_tokens=100
-                )
-                
-                result = json.loads(response.choices[0].message.content)
-                if result.get('author_name') and result.get('confidence', 0) > 0.7:
-                    return result['author_name']
-                    
-            except Exception as e:
-                pass  # 폴백으로 진행
-        
-        # 폴백: 기존 방식
-        return self._fallback_extract_author_name(query)
-    
-    def _fallback_extract_author_name(self, query: str) -> str:
-        """폴백용 작가명 추출."""
-        import re
-        
-        # 1단계: "X가/이 누구야" 패턴 우선 처리 - 조사를 명확히 분리
-        who_patterns = [
-            r'^([가-힣]{2,4})가\s*누구',     # "한강가 누구" - "가" 조사
-            r'^([가-힣]{2,4})이\s*누구',     # "한강이 누구" - "이" 조사  
-            r'^([가-힣]{2,4})\s+누구',       # "한강 누구" - 조사 없음
-        ]
-        
-        for pattern in who_patterns:
-            match = re.match(pattern, query.strip())
-            if match:
-                return match.group(1)
-        
-        # 2단계: 외국 이름 우선 추출 (띄어쓰기 포함)
-        foreign_patterns = [
-            r'^([A-Za-z]+\s+[A-Za-z]+)',  # "무라카미 하루키"
-            r'^([가-힣]+\s+[가-힣]+)',    # "무라카미 하루키" (한글 표기)
-        ]
-        
-        for pattern in foreign_patterns:
-            match = re.match(pattern, query.strip())
-            if match:
-                return match.group(1).strip()
-        
-        # 3단계: 한글 이름 (2-4글자) - 질문 단어가 없는 경우만
-        if not any(word in query for word in ['누구', '뭐', '어떤', '언제', '어디', '알려줘']):
-            korean_match = re.match(r'^([가-힣]{2,4})', query.strip())
-            if korean_match:
-                return korean_match.group(1)
-        
-        # 4단계: 키워드 제거 방식 (폴백)
-        safe_keywords = [
-            '어디', '언제', '몇', '어떤', '누구', '나이',
-            '대학', '대학교', '학교', '고등학교', '중학교', '초등학교',
-            '출신', '졸업', '나옴', '나왔', '다녔', '공부했',
-            '작가', '소설가', '시인', '저자', '정보', '알려줘', '말해줘',
-            '?', '!', '.', '은', '는', '이', '가', '야'
-        ]
-        
-        cleaned = query.strip()
-        for keyword in safe_keywords:
-            cleaned = cleaned.replace(keyword, ' ')
-        
-        cleaned = ' '.join(cleaned.split()).strip()
-        return cleaned if cleaned else None
 
     def _parse_clarification_response(self, query: str) -> Dict[str, str]:
         """clarification 응답에서 작품명과 작가명을 파싱."""
-        import re
-        
-        # "작품명 쓴 작가명" 패턴들 - 더 포괄적으로
-        patterns = [
-            r'^(.+?)\s+쓴\s+([가-힣]{2,4})\s*말이야',        # "채식주의자 쓴 한강 말이야"
-            r'^(.+?)\s+쓴\s+([가-힣\s]+)\s*말이야',          # "개미 쓴 베르나르 베르베르 말이야"  
-            r'^(.+?)\s+쓴\s+([가-힣]{2,4})',                # "채식주의자 쓴 한강"
-            r'^(.+?)\s+쓴\s+([가-힣\s]+)',                  # "개미 쓴 베르나르 베르베르"
-            r'^(.+?)\s+(?:작가|저자)\s+([가-힣]{2,4})',      # "채식주의자 작가 한강"
-            r'^(.+?)(?:라는|이라는)\s+(?:작품|소설|책)\s+쓴\s+([가-힣\s]+)',  # "개미라는 작품 쓴 베르나르 베르베르"
-            r'^(.+?)(?:라는|이라는)?\s*(?:책|소설|작품)?\s*썼다고?\s*했는데',  # "혼모노라는 책 썼다고 했는데"
-            r'^(.+?)\s*썼다고?\s*했는데',                    # "혼모노 썼다고 했는데"
-        ]
-        
-        for i, pattern in enumerate(patterns):
-            match = re.match(pattern, query.strip())
-            if match:
-                book_title = match.group(1).strip()
-                
-                # 마지막 두 패턴("썼다고 했는데")은 작가명이 없음
-                if i >= 6:  # "썼다고 했는데" 패턴들
-                    author_name = None
-                else:
-                    author_name = match.group(2).strip() if len(match.groups()) > 1 else None
-                
-                # 작품명에서 따옴표나 불필요한 문자 제거
-                book_title = book_title.replace('"', '').replace("'", '')
-                
-                return {
-                    'book_title': book_title,
-                    'author_name': author_name
-                }
-        
-        # 패턴 매칭 실패시 전체를 작품명으로 처리
-        return {
-            'book_title': query.strip(),
-            'author_name': None
-        }
+        # 간단히 기존 방식으로 처리
+        return {'author_name': query.strip()}
 
     def _extract_author_from_context_question(self, query: str) -> str:
         """컨텍스트 질문에서 작가명 추출."""
-        import re
-        
-        # "한강 고등학교", "한강 대학" 등의 패턴
-        patterns = [
-            r'^([가-힣]{2,4})\s+(?:고등학교|대학|학교|학력)',
-            r'^([가-힣]{2,4})\s+(?:나이|출생|작품|수상)',  
-            r'^([가-힣\s]+)\s+(?:고등학교|대학|학교|학력)',  # 긴 이름 대응
-            r'^([가-힣]{2,4})(?:은|는)?\s*어디\s*(?:학교|대학|고등학교)',  # "이말년은 어디 학교"
-            r'^([가-힣]{2,4})\s*어디\s*(?:학교|대학|고등학교)',  # "이말년 어디 학교"
-        ]
-        
-        for pattern in patterns:
-            match = re.match(pattern, query.strip())
-            if match:
-                return match.group(1).strip()
-        
-        return None
+        return WikiTextProcessor.extract_author_from_context_question(query)
 
     def _search_author_automatically(self, author_name: str) -> Dict[str, Any]:
         """작가를 자동으로 검색."""

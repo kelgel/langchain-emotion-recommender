@@ -5,6 +5,15 @@
 """
 
 import wikipediaapi
+import sys
+import os
+
+# 모델 import를 위한 경로 설정
+current_dir = os.path.dirname(os.path.abspath(__file__))
+models_dir = os.path.join(os.path.dirname(current_dir), 'models')
+sys.path.insert(0, models_dir)
+
+from wiki_search_result import WikiSearchResult
 
 class WikipediaSearchTool:
     """위키피디아 검색 도구 클래스."""
@@ -53,24 +62,21 @@ class WikipediaSearchTool:
                 # 중요 섹션 + 처음 부분 조합 (최대 4000자)
                 content = (full_text[:2000] + "\n\n" + important_sections)[:4000]
                 
-                return {
-                    'success': True,
-                    'title': page.title,
-                    'summary': page.summary,
-                    'content': content,
-                    'url': page.fullurl
-                }
+                return WikiSearchResult.create_success(
+                    title=page.title,
+                    summary=page.summary,
+                    content=content,
+                    url=page.fullurl
+                ).to_dict()
             else:
-                return {
-                    'success': False,
-                    'error': f'위키피디아에서 "{search_term}"를 찾을 수 없습니다.'
-                }
+                return WikiSearchResult.create_error(
+                    f'위키피디아에서 "{search_term}"를 찾을 수 없습니다.'
+                ).to_dict()
 
         except Exception as e:
-            return {
-                'success': False,
-                'error': f'검색 중 오류 발생: {str(e)}'
-            }
+            return WikiSearchResult.create_error(
+                f'검색 중 오류 발생: {str(e)}'
+            ).to_dict()
 
 
     def _extract_important_sections(self, full_text: str) -> str:

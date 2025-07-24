@@ -34,6 +34,13 @@ sys.path.insert(0, chains_dir)
 
 from wiki_search_chain import WikiSearchChain
 
+# 모델 import를 위한 경로 설정
+models_dir = os.path.join(os.path.dirname(current_dir), 'models')
+sys.path.insert(0, models_dir)
+
+from wiki_conversation_state import WikiConversationState
+from wiki_agent_response import WikiAgentResponse
+
 
 class WikiSearchAgent:
     """위키피디아 검색 에이전트 클래스."""
@@ -41,12 +48,7 @@ class WikiSearchAgent:
     def __init__(self):
         """에이전트를 초기화하고 체인과 세션 상태를 설정."""
         self.chain = WikiSearchChain()
-        self.conversation_state = {
-            'current_author': None,
-            'waiting_for_clarification': False,
-            'last_search_result': None,
-            'conversation_history': []
-        }
+        self.conversation_state = WikiConversationState()
         
         # OpenAI 클라이언트 초기화
         self.llm_client = None
@@ -60,64 +62,64 @@ class WikiSearchAgent:
         """사용자 쿼리를 처리하고 세션 상태를 관리."""
         try:
             # 대화 히스토리에 쿼리 추가
-            self._add_to_history('user', query)
+            self.conversation_state.add_message('user', query)
             
-            # 체인에서 처리
-            result = self.chain.execute(query, self.conversation_state)
+            # 체인에서 처리 (딕셔너리 형태로 변환하여 전달)
+            result = self.chain.execute(query, self.conversation_state.to_dict())
             
             # 컨텍스트 업데이트
             if result.get('update_context'):
                 # 리셋 신호가 있으면 완전히 초기화
                 if result['update_context'].get('reset_conversation'):
-                    self.reset_conversation()
+                    self.conversation_state.reset()
                     # 새로운 작가 정보로 업데이트
                     if 'current_author' in result['update_context']:
-                        self.conversation_state['current_author'] = result['update_context']['current_author']
+                        self.conversation_state.current_author = result['update_context']['current_author']
                     if 'waiting_for_clarification' in result['update_context']:
-                        self.conversation_state['waiting_for_clarification'] = result['update_context']['waiting_for_clarification']
+                        self.conversation_state.waiting_for_clarification = result['update_context']['waiting_for_clarification']
                 else:
-                    self._update_conversation_state(result['update_context'])
+                    self.conversation_state.update(result['update_context'])
             
             # 응답 히스토리에 추가
-            self._add_to_history('assistant', result.get('message', ''))
+            self.conversation_state.add_message('assistant', result.get('message', ''))
             
-            # 결과 포맷팅
-            return {
-                'success': result['action'] != 'error',
-                'message': result.get('message', ''),
-                'action': result['action'],
-                'should_continue': result['action'] in ['ask_clarification', 'show_result'],
-                'context_updated': bool(result.get('update_context')),
-                'agent_name': 'wiki_search'
-            }
+            # WikiAgentResponse 모델 사용
+            if result['action'] == 'error':
+                response = WikiAgentResponse.create_error(
+                    message=result.get('message', ''),
+                    error_details=result.get('error')
+                )
+            elif result['action'] == 'ask_clarification':
+                response = WikiAgentResponse.create_clarification(
+                    message=result.get('message', ''),
+                    context_updated=bool(result.get('update_context'))
+                )
+            else:
+                response = WikiAgentResponse.create_success(
+                    message=result.get('message', ''),
+                    context_updated=bool(result.get('update_context'))
+                )
+            
+            return response.to_dict()
             
         except Exception as e:
-            return {
-                'success': False,
-                'message': '죄송합니다. 검색 중 오류가 발생했습니다. 다시 시도해주세요.',
-                'action': 'error',
-                'should_continue': False,
-                'context_updated': False,
-                'error': str(e),
-                'agent_name': 'wiki_search'
-            }
+            response = WikiAgentResponse.create_error(
+                message='죄송합니다. 검색 중 오류가 발생했습니다. 다시 시도해주세요.',
+                error_details=str(e)
+            )
+            return response.to_dict()
 
     def get_conversation_state(self) -> Dict[str, Any]:
         """현재 대화 상태를 반환."""
-        return self.conversation_state.copy()
+        return self.conversation_state.to_dict()
 
     def reset_conversation(self):
         """대화 상태를 초기화."""
-        self.conversation_state = {
-            'current_author': None,
-            'waiting_for_clarification': False,
-            'last_search_result': None,
-            'conversation_history': []
-        }
+        self.conversation_state.reset()
 
     def is_conversation_active(self) -> bool:
         """현재 대화가 진행 중인지 확인."""
-        return self.conversation_state.get('waiting_for_clarification', False)
+        return self.conversation_state.waiting_for_clarification
 
     def can_handle_query(self, query: str) -> bool:
         """이 에이전트가 주어진 쿼리를 처리할 수 있는지 판단 (LLM 기반)."""
@@ -196,37 +198,10 @@ JSON 형식으로 응답하세요:
         return {
             'agent_name': 'wiki_search',
             'is_active': self.is_conversation_active(),
-            'current_author': self.conversation_state.get('current_author'),
-            'conversation_turns': len(self.conversation_state.get('conversation_history', [])),
-            'waiting_for_input': self.conversation_state.get('waiting_for_clarification', False)
+            'current_author': self.conversation_state.current_author,
+            'conversation_turns': len(self.conversation_state.conversation_history),
+            'waiting_for_input': self.conversation_state.waiting_for_clarification
         }
-
-    def _update_conversation_state(self, updates: Dict[str, Any]):
-        """대화 상태를 업데이트."""
-        for key, value in updates.items():
-            if key in self.conversation_state:
-                self.conversation_state[key] = value
-
-    def _add_to_history(self, role: str, message: str):
-        """대화 히스토리에 메시지를 추가."""
-        if 'conversation_history' not in self.conversation_state:
-            self.conversation_state['conversation_history'] = []
-        
-        self.conversation_state['conversation_history'].append({
-            'role': role,
-            'message': message,
-            'timestamp': self._get_current_timestamp()
-        })
-        
-        # 히스토리 길이 제한 (최근 20개만 유지)
-        if len(self.conversation_state['conversation_history']) > 20:
-            self.conversation_state['conversation_history'] = \
-                self.conversation_state['conversation_history'][-20:]
-
-    def _get_current_timestamp(self) -> str:
-        """현재 타임스탬프를 문자열로 반환."""
-        from datetime import datetime
-        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def interactive_chat():
