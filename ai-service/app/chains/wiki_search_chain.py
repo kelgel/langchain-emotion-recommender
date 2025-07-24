@@ -70,40 +70,40 @@ class WikiSearchChain:
 
     def execute(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """메인 질의 처리 함수: clarification/context/fresh 검색 분기 명확화"""
-        print(f"[DEBUG] execute() 시작 - query: {query}")
+        # print(f"[DEBUG] execute() 시작 - query: {query}")
         
         # 1. clarification(추가 정보 요청) 분기
         if context.get('waiting_for_clarification', False):
-            print("[DEBUG] clarification 분기")
+            # print("[DEBUG] clarification 분기")
             return self._handle_clarification_response(query, context)
         
         # 2. 복합 질문 처리 (최우선)
         compound_result = self._handle_compound_query(query, context)
         if compound_result:
-            print("[DEBUG] 복합 질문 처리")
+            # print("[DEBUG] 복합 질문 처리")
             return compound_result
         
         # 3. context 체크를 먼저 수행 (더 정교한 우선순위)
         context_check = self._check_context_priority(query, context)
-        print(f"[DEBUG] context_check: {context_check}")
+        # print(f"[DEBUG] context_check: {context_check}")
         if context_check['should_use_context']:
-            print("[DEBUG] context question 분기")
+            # print("[DEBUG] context question 분기")
             return self._handle_context_question(query, context)
             
         # 4. 질문에 작가명이 있으면 fresh 검색
         contains_author = self._contains_author_name(query)
-        print(f"[DEBUG] contains_author_name: {contains_author}")
+        # print(f"[DEBUG] contains_author_name: {contains_author}")
         if contains_author:
-            print("[DEBUG] fresh search (작가명 있음)")
+            # print("[DEBUG] fresh search (작가명 있음)")
             return self._fresh_search_flow(query, context)
             
         # 5. 나머지는 fresh 검색
-        print("[DEBUG] fresh search (기본)")
+        # print("[DEBUG] fresh search (기본)")
         return self._fresh_search_flow(query, context)
 
     def _fresh_search_flow(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """[수정됨] LLM intent 분석 결과를 기반으로 명확하게 워크플로우를 분기."""
-        print(f"[DEBUG] _fresh_search_flow() 시작 - query: {query}")
+        # print(f"[DEBUG] _fresh_search_flow() 시작 - query: {query}")
         
         # 관련 없는 질문 먼저 필터링
         if self._is_irrelevant_query(query):
@@ -115,9 +115,9 @@ class WikiSearchChain:
         
         # 1. LLM으로 사용자 의도 분석 (이 결과를 유일한 진실로 간주)
         query_intent = self._analyze_query_intent(query, context)
-        print(f"[DEBUG] query_intent: {query_intent}")
+        # print(f"[DEBUG] query_intent: {query_intent}")
         intent_type = query_intent.get('type')
-        print(f"[DEBUG] intent_type: {intent_type}")
+        # print(f"[DEBUG] intent_type: {intent_type}")
 
         # 2. 의도에 따라 명확히 다른 핸들러 호출
         if intent_type == 'book_to_author':
@@ -313,17 +313,17 @@ class WikiSearchChain:
 
     def _analyze_query_intent(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """쿼리 의도를 분석하여 적절한 처리 방식 결정 (LLM 기반)."""
-        print(f"[DEBUG] LLM client available: {self.llm_client is not None}")
+        # print(f"[DEBUG] LLM client available: {self.llm_client is not None}")
         if self.llm_client:
             try:
                 result = self._llm_analyze_intent(query, context)
-                print(f"[DEBUG] LLM analysis result: {result}")
+                # print(f"[DEBUG] LLM analysis result: {result}")
                 return result
             except Exception as e:
-                print(f"[DEBUG] LLM analysis failed: {e}")
+                # print(f"[DEBUG] LLM analysis failed: {e}")
                 return self._fallback_analyze_intent(query)
         else:
-            print("[DEBUG] Using fallback analysis")
+            # print("[DEBUG] Using fallback analysis")
             return self._fallback_analyze_intent(query)
     
     def _llm_analyze_intent(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
@@ -422,8 +422,7 @@ class WikiSearchChain:
         return prompt
 
     def _handle_book_to_author_query(self, book_title: str, query_intent: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
-        """[수정] 작품명으로 작가를 찾는 쿼리 처리. 제목 유사도 검증 추가."""
-        
+        """[개선] 작품명으로 작가를 찾는 쿼리 처리. 저자 추출 실패해도 작품 요약은 항상 보여줌."""
         search_patterns = [
             f"{book_title} (소설)",
             f"{book_title} (책)",
@@ -431,50 +430,34 @@ class WikiSearchChain:
             f"{book_title} (문학)",
             f"{book_title} (작품)",
         ]
-        
-        # [수정] 띄어쓰기 없는 검색어를 위한 패턴 추가
+        # 띄어쓰기 없는 검색어를 위한 패턴 추가
         if ' ' not in book_title and len(book_title) > 2:
-            # e.g., "희랍어시간" -> "희랍어 시간"
             for i in range(1, len(book_title)):
                 spaced_title = book_title[:i] + ' ' + book_title[i:]
                 search_patterns.insert(0, f"{spaced_title} (소설)")
                 search_patterns.insert(1, spaced_title)
-
         search_result = None
         author_name = None
-        
         for pattern in search_patterns:
             temp_result = self.tool.search_page(pattern)
             if temp_result['success']:
-                # [핵심 수정] 검색된 제목과 원본 제목의 유사도 검증
                 if self._is_title_similar(book_title, temp_result.get('title', '')):
                     search_result = temp_result
                     extracted_author = self._extract_author_with_llm(search_result)
                     if extracted_author:
                         author_name = extracted_author
-                    break # 정확한 결과를 찾았으므로 루프 종료
-
+                    break
         if search_result:
-            # [수정] 구체적인 저자 정보 요청인지 확인 
             book_actual_title = search_result.get('title', book_title).split('(')[0].strip()
-            
-            # "저자" 키워드가 질문에 포함된 경우 간결한 답변
-            if any(word in query.lower() for word in ['저자', '작가', '쓴 사람', '누가 썼', '지은이']):
-                if author_name:
-                    message = f"'{book_actual_title}'의 저자는 {author_name}입니다.\n\n**상세 정보**: {search_result.get('url', '').replace('(', '%28').replace(')', '%29')}"
-                else:
-                    message = f"'{book_actual_title}'의 저자 정보를 찾을 수 없습니다.\n\n**상세 정보**: {search_result.get('url', '').replace('(', '%28').replace(')', '%29')}"
+            summary = search_result.get('summary', '')
+            url = search_result.get('url', '').replace('(', '%28').replace(')', '%29')
+            # 저자 정보가 있으면 함께, 없으면 안내만
+            if author_name:
+                message = f"**{book_actual_title}**\n\n**저자:** {author_name}\n\n**요약:** {summary}\n\n**상세 정보:** {url}"
             else:
-                # 기존처럼 전체 요약 답변 생성
-                message = self._generate_llm_answer(
-                    query=book_title, 
-                    search_result=search_result, 
-                    author_name=author_name if author_name else book_title,
-                    intent_type='book_to_author'
-                )
-            
+                message = f"**{book_actual_title}**\n\n**저자 정보를 찾을 수 없습니다.**\n\n**요약:** {summary}\n\n**상세 정보:** {url}"
             return {
-                'action': 'show_result', 
+                'action': 'show_result',
                 'message': message,
                 'update_context': {
                     'current_author': author_name if author_name else book_title,
@@ -491,28 +474,18 @@ class WikiSearchChain:
                 }
             }
 
-    def _is_title_similar(self, query_title: str, result_title: str, threshold: float = 0.7) -> bool:
-        """두 제목 간의 유사도를 계산하여 임계값 이상인지 확인."""
-        # 간단한 유사도 계산: (긴 제목에서 겹치는 부분) / (긴 제목의 길이)
+    def _is_title_similar(self, query_title: str, result_title: str, threshold: float = 0.5) -> bool:
+        """두 제목 간의 유사도를 계산하여 임계값 이상인지 확인. (더 관대하게 완화)"""
         query_norm = query_title.lower().replace(' ', '')
         result_norm = result_title.lower().replace(' ', '')
-        
         if not query_norm or not result_norm:
             return False
-
-        # 괄호 안의 내용(예: (소설))을 제거하여 핵심 제목만 비교
         import re
         result_core = re.sub(r'\(.*?\)', '', result_norm).strip()
-
+        # 부분 문자열 포함이면 무조건 True
         if query_norm in result_core or result_core in query_norm:
             return True
-        
-        # Jaccard 유사도와 유사한 방식
-        s1 = set(query_norm)
-        s2 = set(result_core)
-        similarity = len(s1.intersection(s2)) / len(s1.union(s2))
-        
-        return similarity >= threshold
+        return False
 
     def _handle_context_question(self, query: str, query_intent: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
         """[재설계 4.0] 맥락 기반 질문 처리. 규칙 기반 키워드 매칭 우선 적용."""
