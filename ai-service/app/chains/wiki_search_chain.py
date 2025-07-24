@@ -74,13 +74,9 @@ class WikiSearchChain:
     def _fresh_search_flow(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """LLM intent 분석, fresh 검색, 답변 생성, context 갱신까지 한 번에 처리"""
         query_intent = self._analyze_query_intent(query, context)
-        debug_info = f"[분석] '{query}' → {query_intent.get('type', 'unknown')}"
-        if query_intent.get('keywords'):
-            debug_info += f" | 키워드: {query_intent['keywords']}"
         if query_intent['type'] == 'context_question':
             # context_question이어도 새로운 작가명이 키워드에 있으면 새로 검색
             if query_intent.get('extracted_keywords') and len(query_intent.get('extracted_keywords', [])) > 0:
-                print(f"[DEBUG] context_question이지만 작가 키워드 발견, 새로 검색: {query_intent.get('extracted_keywords')}")
                 # 키워드에서 작가명을 찾았으니 새로운 검색으로 처리
                 pass  # 아래로 계속 진행해서 author_search로 처리
             else:
@@ -149,7 +145,7 @@ class WikiSearchChain:
                 llm_answer = self._generate_llm_answer(query, search_result, author_name)
                 return {
                     'action': 'show_result',
-                    'message': f"{debug_info}\n\n{llm_answer}",
+                    'message': llm_answer,
                     'update_context': {
                         'current_author': author_name,
                         'last_search_result': search_result
@@ -159,7 +155,7 @@ class WikiSearchChain:
             llm_answer = self._generate_llm_answer(query, search_result, author_name)
             return {
                 'action': 'show_result',
-                'message': f"{debug_info}\n\n{llm_answer}",
+                'message': llm_answer,
                 'update_context': {
                     'current_author': author_name,
                     'last_search_result': search_result
@@ -251,7 +247,6 @@ class WikiSearchChain:
     def _llm_analyze_intent(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """LLM을 사용한 쿼리 의도 분석."""
         try:
-            print(f"[DEBUG] LLM 의도 분석 시작: '{query}'")
             system_prompt = self.prompt.get_intent_analysis_prompt()
             user_prompt = self._format_intent_query(query, context)
             
@@ -266,7 +261,6 @@ class WikiSearchChain:
             )
             
             result = json.loads(response.choices[0].message.content)
-            print(f"[DEBUG] LLM 분석 결과: {result}")
             
             # 결과를 기존 형식에 맞게 변환
             if result.get('intent_type') == 'book_to_author':
@@ -289,9 +283,6 @@ class WikiSearchChain:
                 }
                 
         except Exception as e:
-            # LLM 실패 원인 디버깅
-            print(f"[DEBUG] LLM 의도 분석 실패: {str(e)}")
-            print(f"[DEBUG] API 클라이언트 상태: {self.llm_client}")
             # LLM 실패시 폴백
             return self._fallback_analyze_intent(query)
     
@@ -334,7 +325,6 @@ class WikiSearchChain:
             book_title = query_lower
             for word in ['작가', '누가', '저자', '지은이', '쓴이', '쓴', '정보', '누구야', '누구']:
                 book_title = book_title.replace(word, '').strip()
-            print(f"[DEBUG] Fallback book_to_author: original='{query}', extracted='{book_title}'")
             return {'type': 'book_to_author', 'book_title': book_title}
         
         # 맥락 기반 질문 - 더 포괄적으로
@@ -420,19 +410,14 @@ class WikiSearchChain:
         search_result = None
         successful_title = None
         
-        print(f"[DEBUG] Book search patterns for '{book_title}': {search_patterns}")
-        
         for pattern in search_patterns:
             temp_result = self.tool.search_page(pattern)
-            print(f"[DEBUG] Trying '{pattern}': success={temp_result['success']}")
             if temp_result['success']:
                 # 작가 정보가 포함되어 있는지 확인
                 has_author_info = self._contains_author_info(temp_result)
-                print(f"[DEBUG] '{pattern}' has author info: {has_author_info}")
                 if has_author_info:
                     search_result = temp_result
                     successful_title = pattern
-                    print(f"[DEBUG] Selected pattern: '{pattern}'")
                     break
         
         if search_result:
@@ -442,7 +427,6 @@ class WikiSearchChain:
             
             # 작가명 추출해서 메시지에 포함
             author_name = self._extract_author_from_work_page(search_result)
-            print(f"[DEBUG] Extracted author name: '{author_name}'")
             
             # 작품 정보 포맷팅
             message = f"**{successful_title}**\n\n"
@@ -860,8 +844,6 @@ JSON 형식으로 응답:
             url = search_result.get('url', '').replace('(', '%28').replace(')', '%29')
             
             # 디버깅
-            print(f"[DEBUG] birth 정보 추출: '{birth_info}'")
-            print(f"[DEBUG] 분석 텍스트 일부: {content[:300]}...")
             
             if birth_info:
                 return f"{title}은(는) {birth_info}에 태어났습니다.\n\n**상세 정보**: {url}"
@@ -874,8 +856,6 @@ JSON 형식으로 응답:
             url = search_result.get('url', '').replace('(', '%28').replace(')', '%29')
             
             # 디버깅
-            print(f"[DEBUG] death 정보 추출: '{death_info}'")
-            print(f"[DEBUG] 분석 텍스트 일부: {content[:300]}...")
             
             if death_info:
                 return f"{title}은(는) {death_info}에 사망했습니다.\n\n**상세 정보**: {url}"
@@ -1055,7 +1035,6 @@ JSON 형식으로 응답:
                 )
                 
                 result = json.loads(response.choices[0].message.content)
-                print(f"[DEBUG] LLM birth 추출 결과: {result}")
                 
                 if result.get('found'):
                     birth_date = result.get('birth_date', '')
@@ -1065,7 +1044,7 @@ JSON 형식으로 응답:
                         return birth_date
                 
             except Exception as e:
-                print(f"[DEBUG] LLM birth 추출 실패: {e}")
+                pass
         
         # LLM 실패시 정규식 폴백
         import re
@@ -1115,7 +1094,6 @@ JSON 형식으로 응답:
                 )
                 
                 result = json.loads(response.choices[0].message.content)
-                print(f"[DEBUG] LLM death 추출 결과: {result}")
                 
                 if result.get('found'):
                     death_date = result.get('death_date', '')
@@ -1126,7 +1104,7 @@ JSON 형식으로 응답:
                         return death_date
                 
             except Exception as e:
-                print(f"[DEBUG] LLM death 추출 실패: {e}")
+                pass
         
         # 폴백 처리 - 기존 regex 방식
         return self._fallback_find_death(content)
@@ -1183,12 +1161,9 @@ JSON 형식으로 응답:
                 if result.get('found') and result.get('school'):
                     return result['school']
                 else:
-                    # 디버깅: LLM이 왜 못 찾았는지 확인
-                    print(f"[DEBUG] LLM 고등학교 추출 실패: {result}")
-                    print(f"[DEBUG] 분석한 텍스트 일부: {content[:500]}...")
+                    pass
                     
             except Exception as e:
-                print(f"[DEBUG] LLM 고등학교 추출 오류: {e}")
                 pass  # 폴백으로 진행
         
         # 폴백: 간단한 정규식
@@ -1459,7 +1434,6 @@ JSON 형식으로 응답:
                 if "그리고" in extracted:
                     extracted = self._handle_conjunction_in_title(extracted, query)
                 
-                print(f"[DEBUG] Pattern '{pattern}' extracted '{extracted}' from '{query}'")
                 return extracted
         
         return None
@@ -1478,7 +1452,6 @@ JSON 형식으로 응답:
             # - 첫 번째 부분이 비어있거나 매우 짧으면 작품명의 일부
             # - "그리고 아무도 없었다" 같은 경우
             if len(first_part) == 0 or (len(first_part) <= 2 and not first_part.isdigit()):
-                print(f"[DEBUG] Conjunction: 전체 작품명으로 판단 - '{extracted}'")
                 return extracted
             
             # 2. 첫 번째 부분이 작품명으로 보이는 경우도 전체를 유지
@@ -1486,16 +1459,13 @@ JSON 형식으로 응답:
             if (2 <= len(first_part) <= 8 and 
                 not first_part.isdigit() and
                 not any(word in first_part for word in ['소설', '책', '작품', '시집', '영화'])):
-                print(f"[DEBUG] Conjunction: 전체 작품명으로 판단 - '{extracted}'")
                 return extracted
             
             # 3. 두 개의 독립적인 항목으로 보이는 경우 (예: "1984 그리고 동물농장")
             # 첫 번째가 숫자나 명확한 작품명인 경우
             if first_part.isdigit() or len(first_part) > 8:
-                print(f"[DEBUG] Conjunction: 첫 번째 부분 선택 - '{first_part}'")
                 return first_part
             else:
-                print(f"[DEBUG] Conjunction: 두 번째 부분 선택 - '{second_part}'")
                 return second_part
         
         # 분리가 제대로 되지 않은 경우 원본 반환
@@ -1561,13 +1531,6 @@ JSON 형식으로 응답:
 
 위의 정보를 바탕으로 질문 유형에 맞게 적절한 범위의 답변을 제공해주세요."""
 
-            print(f"[DEBUG] 질문 유형: {question_type}")
-            print(f"[DEBUG] LLM에게 전달되는 정보 (처음 500자): {content[:500]}")
-            print(f"[DEBUG] '아버지' 키워드 포함 여부: {'아버지' in content}")
-            print(f"[DEBUG] '어머니' 키워드 포함 여부: {'어머니' in content}")
-            print(f"[DEBUG] '프랑수아' 키워드 포함 여부: {'프랑수아' in content}")
-            print(f"[DEBUG] '셀린' 키워드 포함 여부: {'셀린' in content}")
-            print(f"[DEBUG] '사이에서' 키워드 포함 여부: {'사이에서' in content}")
 
             response = self.llm_client.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -1588,7 +1551,7 @@ JSON 형식으로 응답:
             return llm_answer
             
         except Exception as e:
-            print(f"[DEBUG] LLM 답변 생성 실패: {e}")
+            # LLM 실패시 폴백
             # 폴백: 기존 템플릿 방식
             return self.prompt.format_author_response(search_result)
 
