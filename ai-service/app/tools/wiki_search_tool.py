@@ -72,23 +72,6 @@ class WikipediaSearchTool:
                 'error': f'검색 중 오류 발생: {str(e)}'
             }
 
-    def search_multiple_terms(self, search_terms: list) -> list:
-        """
-        여러 검색어로 순차적으로 검색.
-
-        Args:
-            search_terms (list): 검색어 리스트
-
-        Returns:
-            list: 각 검색어에 대한 결과 리스트
-        """
-        results = []
-        for term in search_terms:
-            result = self.search_page(term)
-            results.append(result)
-            # 성공한 첫 번째 결과를 우선적으로 반환할 수도 있지만,
-            # 그런 판단은 상위 계층에서 하도록 모든 결과를 반환
-        return results
 
     def _extract_important_sections(self, full_text: str) -> str:
         """위키피디아 텍스트에서 학력/이력 관련 중요 섹션 추출."""

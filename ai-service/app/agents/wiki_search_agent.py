@@ -9,8 +9,15 @@
 from typing import Dict, Any
 import sys
 import os
-import openai
 import json
+
+# OpenAI 모듈 안전하게 import
+try:
+    import openai
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+    openai = None
 
 # .env 파일 로드
 try:
@@ -43,10 +50,11 @@ class WikiSearchAgent:
         
         # OpenAI 클라이언트 초기화
         self.llm_client = None
-        try:
-            self.llm_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-        except Exception:
-            pass
+        if OPENAI_AVAILABLE:
+            try:
+                self.llm_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+            except Exception:
+                pass
 
     def process(self, query: str) -> Dict[str, Any]:
         """사용자 쿼리를 처리하고 세션 상태를 관리."""
@@ -164,7 +172,24 @@ JSON 형식으로 응답하세요:
     def _fallback_can_handle_query(self, query: str) -> bool:
         """기존 키워드 기반 처리 가능 여부 판단 (폴백용)."""
         author_keywords = ['작가', '소설가', '시인', '저자', '작품', '알려줘', '정보', '누구']
-        return any(keyword in query.lower() for keyword in author_keywords)
+        
+        # 기본 키워드 체크
+        if any(keyword in query.lower() for keyword in author_keywords):
+            return True
+        
+        # 인물명 + 질문 패턴 체크 (예: "제인오스틴은 언제 죽었어")
+        person_question_patterns = ['언제', '어디', '태어', '죽었', '사망', '대학', '학교', '출생']
+        query_lower = query.lower()
+        
+        # 인물명이 포함되어 있고 + 질문 패턴이 있으면 처리 가능
+        if any(pattern in query_lower for pattern in person_question_patterns):
+            # 간단한 휴리스틱: 대문자나 외국 이름 패턴이 있으면 인물명일 가능성
+            if (any(char.isupper() for char in query) or 
+                any(name in query for name in ['스틴', '러키', '영하', '오웰', '하루키', '카미']) or
+                len([char for char in query if char.isupper()]) >= 2):  # 대문자가 2개 이상
+                return True
+        
+        return False
 
     def get_status_info(self) -> Dict[str, Any]:
         """에이전트 상태 정보를 반환."""

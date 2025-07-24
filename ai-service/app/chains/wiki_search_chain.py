@@ -57,15 +57,132 @@ class WikiSearchChain:
                 pass
 
     def execute(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        """메인 질의 처리 함수: clarification/context/fresh 검색 분기 명확화"""
+        # 1. clarification(추가 정보 요청) 분기
+        if context.get('waiting_for_clarification', False):
+            return self._handle_clarification_response(query, context)
+        # 2. 질문에 작가명이 있으면 무조건 fresh 검색 (context 무시)
+        if self._contains_author_name(query):
+            return self._fresh_search_flow(query, context)
+        # 3. context(이전 작가 활용) 분기 (작가명 없을 때만)
+        context_check = self._check_context_priority(query, context)
+        if context_check['should_use_context']:
+            return self._handle_context_question(query, context)
+        # 4. 나머지(LLM intent 분석 등)도 fresh 검색
+        return self._fresh_search_flow(query, context)
+
+    def _fresh_search_flow(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        """LLM intent 분석, fresh 검색, 답변 생성, context 갱신까지 한 번에 처리"""
+        query_intent = self._analyze_query_intent(query, context)
+        debug_info = f"[분석] '{query}' → {query_intent.get('type', 'unknown')}"
+        if query_intent.get('keywords'):
+            debug_info += f" | 키워드: {query_intent['keywords']}"
+        if query_intent['type'] == 'context_question':
+            # context_question이어도 새로운 작가명이 키워드에 있으면 새로 검색
+            if query_intent.get('extracted_keywords') and len(query_intent.get('extracted_keywords', [])) > 0:
+                print(f"[DEBUG] context_question이지만 작가 키워드 발견, 새로 검색: {query_intent.get('extracted_keywords')}")
+                # 키워드에서 작가명을 찾았으니 새로운 검색으로 처리
+                pass  # 아래로 계속 진행해서 author_search로 처리
+            else:
+                return self._handle_context_question(query, context)
+        if query_intent['type'] == 'book_to_author':
+            book_title = self._extract_book_title_from_query(query)
+            if not book_title and query_intent.get('keywords'):
+                book_title = query_intent['keywords'][0]
+            if book_title:
+                return self._handle_book_to_author_query(book_title, context)
+        elif query_intent['type'] not in ['new_search', 'author_search']:
+            if self._is_book_to_author_pattern(query):
+                book_title = self._extract_book_title_from_query(query)
+                if book_title:
+                    return self._handle_book_to_author_query(book_title, context)
+            return {
+                'action': 'error',
+                'message': '죄송합니다. 작가 정보 검색만 가능합니다. 작가에 대해 질문해주세요.',
+                'update_context': {}
+            }
+        if self._is_book_to_author_pattern(query):
+            book_title = self._extract_book_title_from_query(query)
+            if book_title:
+                return self._handle_book_to_author_query(book_title, context)
+        if query_intent.get('keywords'):
+            author_name = query_intent['keywords'][0]
+        elif query_intent.get('extracted_keywords') and len(query_intent.get('extracted_keywords', [])) > 0:
+            author_name = query_intent['extracted_keywords'][0]
+        else:
+            author_name = self._extract_author_name(query)
+        if not author_name:
+            return {
+                'action': 'error',
+                'message': self.prompt.get_ambiguous_query_message(),
+                'update_context': {}
+            }
+        search_patterns = [
+            f"{author_name} (작가)",
+            f"{author_name} (소설가)",
+            f"{author_name} (만화가)",
+            author_name
+        ]
+        search_result = None
+        for pattern in search_patterns:
+            temp_result = self.tool.search_page(pattern)
+            if temp_result['success'] and self._is_author_result(temp_result):
+                search_result = temp_result
+                break
+        if not search_result:
+            search_result = self.tool.search_page(author_name)
+        if not search_result['success']:
+            return {
+                'action': 'ask_clarification',
+                'message': self.prompt.get_search_failure_message(author_name),
+                'update_context': {
+                    'waiting_for_clarification': True,
+                    'current_author': author_name
+                }
+            }
+        if self._is_author_result(search_result):
+            llm_specific_info = query_intent.get('specific_info_request')
+            fallback_specific_info = self._extract_specific_info_request(query)
+            specific_info = fallback_specific_info if fallback_specific_info else llm_specific_info
+            if specific_info:
+                # LLM으로 자연스러운 답변 생성
+                llm_answer = self._generate_llm_answer(query, search_result, author_name)
+                return {
+                    'action': 'show_result',
+                    'message': f"{debug_info}\n\n{llm_answer}",
+                    'update_context': {
+                        'current_author': author_name,
+                        'last_search_result': search_result
+                    }
+                }
+            # LLM으로 자연스러운 답변 생성
+            llm_answer = self._generate_llm_answer(query, search_result, author_name)
+            return {
+                'action': 'show_result',
+                'message': f"{debug_info}\n\n{llm_answer}",
+                'update_context': {
+                    'current_author': author_name,
+                    'last_search_result': search_result
+                }
+            }
+        return {
+            'action': 'ask_clarification',
+            'message': self.prompt.get_clarification_request(author_name),
+            'update_context': {
+                'waiting_for_clarification': True,
+                'current_author': author_name
+            }
+        }
+
+    def _handle_initial_query(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """
-        위키피디아 검색 워크플로우를 실행.
+        최초 작가 검색 쿼리를 처리.
         
-        이 메서드는 모든 비즈니스 로직과 엣지케이스를 처리합니다:
-        - 작가인지 판단
-        - 동명이인 처리 
-        - 언제 대표작을 물어볼지 결정
-        - 검색 실패시 처리
-        - 재검색 로직
+        엣지케이스 처리:
+        - 빈 쿼리
+        - 작가명 추출 실패
+        - 검색 결과 없음
+        - 동명이인 (작가가 아닌 결과)
         """
         try:
             # 컨텍스트 상태 확인 및 분기
@@ -79,131 +196,6 @@ class WikiSearchChain:
                 'action': 'error',
                 'message': self.prompt.get_general_error_message(),
                 'update_context': {}
-            }
-
-    def _handle_initial_query(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        최초 작가 검색 쿼리를 처리.
-        
-        엣지케이스 처리:
-        - 빈 쿼리
-        - 작가명 추출 실패
-        - 검색 결과 없음
-        - 동명이인 (작가가 아닌 결과)
-        """
-        # 1단계: 새로운 작가명 언급 확인 (우선순위 최고)
-        if self._is_new_author_mentioned(query, context):
-            # 새로운 작가가 언급되면 맥락을 무시하고 새 검색
-            pass  # LLM 분석으로 진행
-        else:
-            # 2단계: 대화 맥락 우선 확인 (코드 레벨)
-            context_check = self._check_context_priority(query, context)
-            if context_check['should_use_context']:
-                return self._handle_context_question(query, context)
-        
-        # 3단계: 질문 의도 분석 (LLM 기반)
-        query_intent = self._analyze_query_intent(query, context)
-        
-        # 디버깅 정보를 사용자에게 표시 (임시)
-        debug_info = f"[분석] '{query}' → {query_intent.get('type', 'unknown')}"
-        if query_intent.get('keywords'):
-            debug_info += f" | 키워드: {query_intent['keywords']}"
-        
-        if query_intent['type'] == 'book_to_author':
-            # "개미 작가", "개미 저자" -> 작품명으로 작가 검색
-            return self._handle_book_to_author_query(query_intent['book_title'], context)
-        elif query_intent['type'] == 'context_question':
-            # "대학이 어디야" -> 이전 검색 결과 활용
-            return self._handle_context_question(query, context)
-        elif query_intent['type'] not in ['new_search', 'author_search']:
-            # 작가 검색이 아닌 경우 에러 반환
-            return {
-                'action': 'error',
-                'message': '죄송합니다. 작가 정보 검색만 가능합니다. 작가에 대해 질문해주세요.',
-                'update_context': {}
-            }
-        
-        # 2단계: 일반 작가 검색 (LLM으로 키워드 추출된 경우 활용)
-        if query_intent.get('keywords'):
-            author_name = query_intent['keywords'][0]  # 첫 번째 키워드를 작가명으로 사용
-        else:
-            author_name = self._extract_author_name(query)
-        if not author_name:
-            return {
-                'action': 'error',
-                'message': self.prompt.get_ambiguous_query_message(),
-                'update_context': {}
-            }
-
-        # 기본 검색 시도 (동명이인 대비 여러 패턴)
-        search_patterns = [
-            "{} (작가)".format(author_name),      # 먼저 명확한 패턴 시도
-            "{} (소설가)".format(author_name),
-            "{} (만화가)".format(author_name),
-            author_name                          # 마지막에 기본 검색
-        ]
-        
-        search_result = None
-        for pattern in search_patterns:
-            temp_result = self.tool.search_page(pattern)
-            if temp_result['success'] and self._is_author_result(temp_result):
-                search_result = temp_result
-                break
-        
-        # 모든 패턴 실패시 마지막 시도
-        if not search_result:
-            search_result = self.tool.search_page(author_name)
-        
-        if not search_result['success']:
-            # 엣지케이스: 검색 실패 → 대표작 요청
-            return {
-                'action': 'ask_clarification',
-                'message': self.prompt.get_search_failure_message(author_name),
-                'update_context': {
-                    'waiting_for_clarification': True,
-                    'current_author': author_name
-                }
-            }
-
-        # 검색 성공 → 작가인지 검증
-        if self._is_author_result(search_result):
-            # LLM에서 특정 정보 요청이 있는지 먼저 확인
-            llm_specific_info = query_intent.get('specific_info_request')
-            # 기존 방식도 확인 (폴백)
-            fallback_specific_info = self._extract_specific_info_request(query)
-            
-            specific_info = llm_specific_info or fallback_specific_info
-            
-            if specific_info:
-                # 특정 정보 추출하여 답변
-                answer = self._extract_specific_answer(search_result, specific_info, author_name)
-                return {
-                    'action': 'show_result',
-                    'message': f"{debug_info}\n\n{answer}",
-                    'update_context': {
-                        'current_author': author_name,
-                        'last_search_result': search_result
-                    }
-                }
-            
-            # 일반 작가 정보 반환
-            return {
-                'action': 'show_result',
-                'message': f"{debug_info}\n\n{self.prompt.format_author_response(search_result)}",
-                'update_context': {
-                    'current_author': author_name,
-                    'last_search_result': search_result
-                }
-            }
-        else:
-            # 엣지케이스: 동명이인 (작가가 아님) → 대표작 요청
-            return {
-                'action': 'ask_clarification',
-                'message': self.prompt.get_clarification_request(author_name),
-                'update_context': {
-                    'waiting_for_clarification': True,
-                    'current_author': author_name
-                }
             }
 
     def _handle_clarification_response(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
@@ -360,11 +352,12 @@ class WikiSearchChain:
             return {'type': 'new_search', 'query': query}
         
         # 단순 작품 -> 작가 질문 패턴  
-        if any(word in query_lower for word in ['작가', '저자', '지은이', '쓴이']) and \
+        if any(word in query_lower for word in ['작가', '저자', '지은이', '쓴이', '쓴']) and \
            not any(word in query_lower for word in ['누구', '알려줘', '정보', '대학', '출생', '나이', '언제', '어디']):
             book_title = query_lower
-            for word in ['작가', '누가', '저자', '지은이', '쓴이', '정보']:
+            for word in ['작가', '누가', '저자', '지은이', '쓴이', '쓴', '정보', '누구야', '누구']:
                 book_title = book_title.replace(word, '').strip()
+            print(f"[DEBUG] Fallback book_to_author: original='{query}', extracted='{book_title}'")
             return {'type': 'book_to_author', 'book_title': book_title}
         
         # 맥락 기반 질문 - 더 포괄적으로
@@ -423,21 +416,77 @@ class WikiSearchChain:
         return prompt
 
     def _handle_book_to_author_query(self, book_title: str, context: Dict[str, Any]) -> Dict[str, Any]:
-        """작품명으로 작가를 찾는 쿼리 처리."""
-        # 작품명으로 직접 검색
-        search_result = self.tool.search_page(book_title)
+        """작품명으로 작가를 찾는 쿼리 처리. 다양한 검색 패턴 시도."""
         
-        if search_result['success'] and self._is_author_result(search_result):
+        # 다양한 검색 패턴으로 시도
+        search_patterns = [
+            book_title,                      # 원래 제목
+            f"{book_title} (소설)",          # 소설 형태  
+            f"{book_title} (책)",            # 책 형태
+            f"{book_title} (문학)",          # 문학 형태
+            f"{book_title} (작품)",          # 작품 형태
+        ]
+        
+        # 띄어쓰기 변형 패턴도 추가 (한글의 경우)
+        if len(book_title) > 2 and all(ord(c) >= 0xAC00 and ord(c) <= 0xD7A3 for c in book_title if c.isalpha()):
+            # 2글자씩 띄어쓰기 변형 추가
+            spaced_title = ' '.join([book_title[i:i+2] for i in range(0, len(book_title), 2)])
+            search_patterns.append(spaced_title)
+            search_patterns.append(f"{spaced_title} (소설)")
+            
+            # 중간에 띄어쓰기 추가하는 변형
+            if len(book_title) >= 4:
+                mid_spaced = book_title[:2] + ' ' + book_title[2:]
+                search_patterns.append(mid_spaced)
+                search_patterns.append(f"{mid_spaced} (소설)")
+        
+        search_result = None
+        successful_title = None
+        
+        print(f"[DEBUG] Book search patterns for '{book_title}': {search_patterns}")
+        
+        for pattern in search_patterns:
+            temp_result = self.tool.search_page(pattern)
+            print(f"[DEBUG] Trying '{pattern}': success={temp_result['success']}")
+            if temp_result['success']:
+                # 작가 정보가 포함되어 있는지 확인
+                has_author_info = self._contains_author_info(temp_result)
+                print(f"[DEBUG] '{pattern}' has author info: {has_author_info}")
+                if has_author_info:
+                    search_result = temp_result
+                    successful_title = pattern
+                    print(f"[DEBUG] Selected pattern: '{pattern}'")
+                    break
+        
+        if search_result:
+            # 검색 성공 - 작품 정보를 우선적으로 보여주기
+            url = search_result.get('url', '')
+            clickable_url = url.replace('(', '%28').replace(')', '%29')
+            
+            # 작가명 추출해서 메시지에 포함
+            author_name = self._extract_author_from_work_page(search_result)
+            print(f"[DEBUG] Extracted author name: '{author_name}'")
+            
+            # 작품 정보 포맷팅
+            message = f"**{successful_title}**\n\n"
+            
+            if author_name:
+                message += f"**작가**: {author_name}\n\n"
+            
+            message += f"**요약**: {search_result.get('summary', '')[:200]}...\n\n"
+            message += f"**상세 정보**: {clickable_url}\n\n"
+            message += "더 궁금한 것이 있으시면 언제든 물어보세요!"
+            
             return {
-                'action': 'show_result',
-                'message': self.prompt.format_author_response(search_result),
+                'action': 'show_result', 
+                'message': message,
                 'update_context': {
-                    'current_author': book_title,
+                    'current_author': author_name if author_name else book_title,
                     'last_search_result': search_result
                 }
             }
         
-        # 실패시 일반 검색으로 폴백
+        # 모든 패턴 실패시 폴백
         return {
             'action': 'ask_clarification',
             'message': "'{}'의 작가를 찾을 수 없습니다. 정확한 작품명을 알려주시겠어요?".format(book_title),
@@ -448,58 +497,23 @@ class WikiSearchChain:
         }
 
     def _handle_context_question(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
-        """이전 검색 결과를 활용한 맥락 질문 처리."""
-        last_result = context.get('last_search_result')
-        
-        if not last_result:
-            # 컨텍스트가 없지만 질문에 작가명이 포함된 경우 자동 검색
-            author_name = self._extract_author_from_context_question(query)
-            if author_name:
-                # 해당 작가를 먼저 검색
-                search_result = self._search_author_automatically(author_name)
-                if search_result and search_result.get('success'):
-                    # 검색 성공 후 질문 처리
-                    specific_answer = self._extract_context_specific_answer(query, search_result)
-                    if specific_answer:
-                        return {
-                            'action': 'show_result',
-                            'message': specific_answer,
-                            'update_context': {
-                                'current_author': author_name,
-                                'last_search_result': search_result
-                            }
-                        }
-            
+        """맥락 기반 질문 처리: fallback info_type이 있으면 반드시 답변 생성"""
+        # context에서 최근 검색 결과/작가명 활용
+        search_result = context.get('last_search_result')
+        author_name = context.get('current_author')
+        if not search_result or not author_name:
             return {
-                'action': 'error', 
-                'message': '먼저 작가를 검색해주세요. 예: "한강 작가 알려줘"',
+                'action': 'error',
+                'message': self.prompt.get_ambiguous_query_message(),
                 'update_context': {}
             }
-        
-        # 질문 유형에 따른 구체적 답변 생성
-        specific_answer = self._extract_context_specific_answer(query, last_result)
-        
-        # 디버깅: 왜 구체적 답변을 찾지 못했는지 확인
-        if not specific_answer:
-            print(f"[DEBUG] 구체적 답변 찾기 실패: '{query}'")
-            print(f"[DEBUG] 검색 결과 일부: {last_result.get('content', '')[:200]}...")
-        
-        if specific_answer:
-            return {
-                'action': 'show_result',
-                'message': specific_answer,
-                'update_context': context
-            }
-        else:
-            # 구체적 답변을 찾지 못한 경우 전체 정보 반환
-            answer = "이전에 검색한 {}의 정보를 다시 보여드리겠습니다.".format(
-                last_result.get('title', '작가')
-            )
-            return {
-                'action': 'show_result',
-                'message': answer + "\n\n" + self.prompt.format_author_response(last_result),
-                'update_context': context
-            }
+        # LLM으로 자연스러운 답변 생성
+        llm_answer = self._generate_llm_answer(query, search_result, author_name)
+        return {
+            'action': 'show_result',
+            'message': llm_answer,
+            'update_context': context
+        }
 
     def _extract_author_name(self, query: str) -> str:
         """쿼리에서 작가명을 추출 - 개선된 방식."""
@@ -769,49 +783,32 @@ JSON 형식으로 응답:
         return patterns
 
     def _extract_specific_info_request(self, query: str) -> str:
-        """쿼리에서 특정 정보 요청을 추출."""
         query_lower = query.lower()
-        
-        # 명시적으로 고등학교/중학교/초등학교를 언급한 경우만 school
+        import re
+        # 1. 학교 관련 분기 (가장 앞에)
         if any(word in query_lower for word in ['고등학교', '중학교', '초등학교']):
             return 'school'
-        # 일반적인 "학교", "출신", "대학" 모두 최종학력(대학교)로 간주
-        elif any(word in query_lower for word in ['대학', '대학교', '학교', '출신']):
+        if any(word in query_lower for word in ['대학', '대학교', '학교', '출신']):
             return 'university'
-        elif any(word in query_lower for word in ['출생', '태어', '나이', '언제']):
-            return 'birth'
-        elif any(word in query_lower for word in ['작품', '소설', '책']):
+        # 2. 가족/대표작 등
+        if '아버지' in query_lower or '부친' in query_lower:
+            return 'father'
+        if '어머니' in query_lower or '모친' in query_lower:
+            return 'mother'
+        if '가족' in query_lower or '부모' in query_lower:
+            return 'family'
+        if '대표작품' in query_lower or '대표작' in query_lower or '작품' in query_lower:
             return 'works'
-        elif any(word in query_lower for word in ['수상', '상', '받은']):
+        # 기존 분기 유지
+        if re.search(r'(태어|출생)', query_lower) and re.search(r'(죽|사망)', query_lower):
+            return 'birth_death'
+        if any(word in query_lower for word in ['죽었', '사망', '사혼', '언제 죽', '몇년에 죽', '언제 죽', '죽은']):
+            return 'death'
+        if any(word in query_lower for word in ['출생', '태어', '나이']) or ('언제' in query_lower and not any(death_word in query_lower for death_word in ['죽', '사망'])):
+            return 'birth'
+        if any(word in query_lower for word in ['수상', '상', '받은']):
             return 'awards'
-        
         return None
-
-    def _contains_author_name(self, query: str) -> bool:
-        """쿼리에 작가명이 포함되어 있는지 확인."""
-        # 한글 이름 패턴 (2-4글자)
-        import re
-        korean_name_pattern = r'[가-힣]{2,4}'
-        
-        # 외국 이름 패턴 (영문)
-        foreign_name_pattern = r'[A-Za-z]{3,}'
-        
-        korean_matches = re.findall(korean_name_pattern, query)
-        foreign_matches = re.findall(foreign_name_pattern, query)
-        
-        # 일반적인 단어들은 제외
-        common_words = ['대학', '어디', '나왔', '출신', '졸업', '언제', '태어', '작품', '소설', '어떤']
-        
-        # 한글 이름 후보가 있고, 일반 단어가 아닌 경우
-        for name in korean_matches:
-            if name not in common_words:
-                return True
-                
-        # 외국 이름 후보가 있는 경우
-        if foreign_matches:
-            return True
-            
-        return False
 
     def _extract_specific_answer(self, search_result: Dict[str, Any], info_type: str, author_name: str) -> str:
         """검색 결과에서 특정 정보를 추출하여 답변 생성."""
@@ -890,13 +887,40 @@ JSON 형식으로 응답:
             print(f"[DEBUG] 분석 텍스트 일부: {content[:300]}...")
             
             if birth_info:
-                return "{}은(는) {}에 태어났습니다.\n\n**상세 정보**: {}".format(
-                    title, birth_info, url
-                )
+                return f"{title}은(는) {birth_info}에 태어났습니다.\n\n**상세 정보**: {url}"
             else:
-                return "{}의 출생 정보를 찾을 수 없습니다.\n\n**전체 정보**: {}".format(
-                    title, url
-                )
+                return f"{title}의 출생 정보를 찾을 수 없습니다.\n\n**전체 정보**: {url}"
+                
+        elif info_type == 'death':
+            # 사망 정보 추출
+            death_info = self._find_death_info(content)
+            url = search_result.get('url', '').replace('(', '%28').replace(')', '%29')
+            
+            # 디버깅
+            print(f"[DEBUG] death 정보 추출: '{death_info}'")
+            print(f"[DEBUG] 분석 텍스트 일부: {content[:300]}...")
+            
+            if death_info:
+                return f"{title}은(는) {death_info}에 사망했습니다.\n\n**상세 정보**: {url}"
+            else:
+                return f"{title}의 사망 정보를 찾을 수 없습니다.\n\n**전체 정보**: {url}"
+        
+        elif info_type == 'birth_death':
+            # 출생과 사망 정보 모두 추출
+            birth_info = self._find_birth_info(content)
+            death_info = self._find_death_info(content)
+            url = search_result.get('url', '').replace('(', '%28').replace(')', '%29')
+            response = f"{title}은(는) "
+            if birth_info:
+                response += f"{birth_info}에 태어나 "
+            if death_info:
+                response += f"{death_info}에 사망했습니다."
+            if not birth_info and not death_info:
+                response += "출생과 사망 정보를 찾을 수 없습니다."
+            elif birth_info and not death_info:
+                response += "현재까지 생존해 있는 것으로 확인됩니다."
+            response += f"\n\n**상세 정보**: {url}"
+            return response
         
         elif info_type == 'works':
             # 작품 정보 추출
@@ -923,6 +947,40 @@ JSON 형식으로 응답:
                 return "{}의 수상 정보를 찾을 수 없습니다.\n\n**전체 정보**: {}".format(
                     title, url
                 )
+        
+        elif info_type == 'father':
+            # 아버지 정보 추출
+            father_info = self._find_father_info(content)
+            url = search_result.get('url', '').replace('(', '%28').replace(')', '%29')
+            if father_info:
+                return f"{title}의 아버지 이름은 {father_info}입니다.\n\n**상세 정보**: {url}"
+            else:
+                return f"{title}의 아버지 정보를 찾을 수 없습니다.\n\n**상세 정보**: {url}"
+        elif info_type == 'mother':
+            # 어머니 정보 추출
+            mother_info = self._find_mother_info(content)
+            url = search_result.get('url', '').replace('(', '%28').replace(')', '%29')
+            if mother_info:
+                return f"{title}의 어머니 이름은 {mother_info}입니다.\n\n**상세 정보**: {url}"
+            else:
+                return f"{title}의 어머니 정보를 찾을 수 없습니다.\n\n**상세 정보**: {url}"
+        elif info_type == 'family':
+            # 가족 정보 추출
+            family_info = self._find_family_info(content)
+            url = search_result.get('url', '').replace('(', '%28').replace(')', '%29')
+            if family_info and (family_info.get('father') or family_info.get('mother')):
+                result_parts = []
+                if family_info.get('father'):
+                    result_parts.append(f"아버지: {family_info['father']}")
+                if family_info.get('mother'):
+                    result_parts.append(f"어머니: {family_info['mother']}")
+                
+                if result_parts:
+                    return f"{title}의 가족 정보:\n" + "\n".join(result_parts) + f"\n\n**상세 정보**: {url}"
+                else:
+                    return f"{title}의 가족 정보를 찾을 수 없습니다.\n\n**상세 정보**: {url}"
+            else:
+                return f"{title}의 가족 정보를 찾을 수 없습니다.\n\n**상세 정보**: {url}"
         
         # 기본값: 전체 정보 반환
         return self.prompt.format_author_response(search_result)
@@ -1024,15 +1082,11 @@ JSON 형식으로 응답:
                 
                 if result.get('found'):
                     birth_date = result.get('birth_date', '')
-                    age_info = result.get('age_info', '')
-                    
-                    if birth_date and age_info:
-                        return f"{birth_date} ({age_info})"
-                    elif birth_date:
+                    # age_info = result.get('age_info', '')
+                    # 나이 정보는 무시하고 날짜만 반환
+                    if birth_date:
                         return birth_date
-                    elif age_info:
-                        return age_info
-                        
+                
             except Exception as e:
                 print(f"[DEBUG] LLM birth 추출 실패: {e}")
         
@@ -1045,6 +1099,74 @@ JSON 형식으로 응답:
         ]
         
         for pattern in patterns:
+            matches = re.findall(pattern, content)
+            if matches:
+                return matches[0]
+        
+        return None
+
+    def _find_death_info(self, content: str) -> str:
+        """텍스트에서 사망 정보 추출 - LLM 기반."""
+        # LLM으로 먼저 시도
+        if self.llm_client:
+            try:
+                system_prompt = """주어진 텍스트에서 인물의 사망 관련 정보를 추출하세요.
+
+JSON 형식으로 응답:
+{
+    "death_date": "사망일",
+    "death_year": "사망년도", 
+    "death_cause": "사망원인",
+    "death_age": "사망 당시 나이",
+    "found": true/false
+}
+
+추출 규칙:
+- 사망일, 사망년도, 사망원인, 사망 당시 나이 등 사망 관련 정보만 추출
+- 정확한 날짜 형식으로 표시 (예: 1950년 1월 21일)
+- 사망원인이 명시되어 있으면 포함
+- 사망 당시 나이도 포함 가능하면 포함
+- 정보가 없으면 found: false"""
+
+                response = self.llm_client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"텍스트: {content[:2000]}"}
+                    ],
+                    temperature=0.1
+                )
+                
+                result = json.loads(response.choices[0].message.content)
+                print(f"[DEBUG] LLM death 추출 결과: {result}")
+                
+                if result.get('found'):
+                    death_date = result.get('death_date', '')
+                    # death_cause = result.get('death_cause', '')
+                    # death_age = result.get('death_age', '')
+                    # 사망일만 반환
+                    if death_date:
+                        return death_date
+                
+            except Exception as e:
+                print(f"[DEBUG] LLM death 추출 실패: {e}")
+        
+        # 폴백 처리 - 기존 regex 방식
+        return self._fallback_find_death(content)
+
+    def _fallback_find_death(self, content: str) -> str:
+        """폴백용 사망 정보 추출."""
+        import re
+        
+        # 사망 관련 패턴
+        death_patterns = [
+            r'(\d{4}년\s*\d{1,2}월\s*\d{1,2}일)[^\d]*?(?:사망|세상을 떠|타계|별세)',
+            r'(\d{4}년)[^\d]*?(?:사망|세상을 떠|타계|별세)',
+            r'(?:사망|세상을 떠|타계|별세)[^\d]*?(\d{4}년\s*\d{1,2}월\s*\d{1,2}일)',
+            r'(?:사망|세상을 떠|타계|별세)[^\d]*?(\d{4}년)',
+        ]
+        
+        for pattern in death_patterns:
             matches = re.findall(pattern, content)
             if matches:
                 return matches[0]
@@ -1269,34 +1391,11 @@ JSON 형식으로 응답:
         }
     
     def _contains_author_name(self, query: str) -> bool:
-        """질문에 작가명이 포함되어 있는지 확인."""
+        """질문에 작가명(한글 2글자 이상, 띄어쓰기 포함, 영어 이름 등)이 포함되어 있는지 완화된 정규식으로 판별"""
         import re
-        
-        # 작품명→작가명 패턴 확인 (우선순위)
-        book_to_author_patterns = [
-            r'(.+)\s+(작가|저자)(?:가|는|을|를)?\s*(누구|뭐)',  # "토지 작가가 누구야"
-            r'(.+)\s+(쓴|지은)\s*(사람|작가|저자)',  # "토지 쓴 사람"
-        ]
-        
-        for pattern in book_to_author_patterns:
-            match = re.search(pattern, query)
-            if match:
-                return False  # 이는 작품명이므로 작가명이 아님
-        
-        # 명시적 작가명 언급 패턴
-        explicit_author_patterns = [
-            r'(김영하|한강|무라카미\s*하루키|박민규|정유정)',  # 알려진 작가명
-            r'[가-힣]{2,3}\s+[가-힣]{2,3}',  # 한국식 성명 (김영하, 이문열 등)
-        ]
-        
-        # 작가명이 명시적으로 언급된 경우만 True
-        for pattern in explicit_author_patterns:
-            if re.search(pattern, query):
-                # 작가 관련 질문인지 확인
-                if any(word in query for word in ['작가', '저자', '작품', '대표작', '누구', '알려줘', '대해', '몇살', '나이', '대학', '학교']):
-                    return True
-        
-        return False
+        # 한글 2글자 이상(띄어쓰기 포함), 영어 이름(대소문자, 띄어쓰기 포함) 모두 허용
+        # 예: '한강', '제인 오스틴', 'Agatha Christie', 'J. K. Rowling'
+        return bool(re.search(r'([가-힣]{2,}(\s[가-힣]{2,})*|[A-Za-z]{2,}(\s[A-Za-z\.]{1,})*)', query))
 
     def _is_new_author_mentioned(self, query: str, context: Dict[str, Any]) -> bool:
         """새로운 작가가 언급되었는지 확인."""
@@ -1325,3 +1424,272 @@ JSON 형식으로 응답:
                         return True
         
         return False
+
+    def _contains_author_info(self, search_result: Dict[str, Any]) -> bool:
+        """검색 결과에 작가 정보가 포함되어 있는지 확인."""
+        content = search_result.get('content', '') + search_result.get('summary', '')
+        
+        # 작가 관련 키워드 확인
+        author_indicators = [
+            '작가', '저자', '소설가', '시인', '문학가', '작품', '쓴', '지은', 
+            '집필', '창작', '발표', '출간', '출판', '연재'
+        ]
+        
+        return any(keyword in content for keyword in author_indicators)
+    
+    def _extract_author_from_work_page(self, search_result: Dict[str, Any]) -> str:
+        """작품 페이지에서 작가명을 추출."""
+        content = search_result.get('content', '') + search_result.get('summary', '')
+        import re
+        
+        # 다양한 작가명 추출 패턴 (외국 작가명 포함)
+        author_patterns = [
+            r'([가-힣]{2,4}(?:\s+[가-힣]{2,4})?)\s*(?:이|가)\s*(?:쓴|지은|창작한|발표한)',  # "김영하가 쓴", "베르나르 베르베르가 쓴"
+            r'(?:작가|저자|소설가)\s*([가-힣]{2,4}(?:\s+[가-힣]{2,4})?)',                # "작가 김영하", "작가 베르나르 베르베르"
+            r'([가-힣]{2,4}(?:\s+[가-힣]{2,4})?)\s*(?:의|이)\s*(?:작품|소설|대표작)',     # "김영하의 작품"
+            r'([가-힣]{2,4}(?:\s+[가-힣]{2,4})?)\s*\([^)]*(?:작가|소설가|시인)[^)]*\)',   # "김영하 (작가)"
+            r'([A-Za-z]+\s+[A-Za-z]+)\s*(?:이|가)?\s*(?:쓴|지은|창작한)',              # "George Orwell이 쓴"
+            r'([가-힣]+\s+[가-힣]+)\s*(?:이|가)?\s*(?:쓴|지은)',                        # "베르나르 베르베르가 쓴"
+            r'([가-힣]+\s+[가-힣]+)의\s*(?:장편|추리|소설|작품)',               # "애거사 크리스티의 장편"
+            r'([A-Za-z]+\s+[A-Za-z]+)의?\s*(?:장편|추리|소설|작품)',             # "Agatha Christie의 장편"
+            r'([A-Za-z]+\s+[A-Za-z]+)\s*\([^)]*(?:작가|소설가|작가|소설가)[^)]*\)',     # "Agatha Christie (작가)"
+        ]
+        
+        for pattern in author_patterns:
+            matches = re.findall(pattern, content)
+            if matches:
+                # 추출된 작가명에서 조사 제거
+                author_name = matches[0].strip()
+                # "의", "이", "가" 등 조사 제거
+                author_name = re.sub(r'[의이가을를는]$', '', author_name)
+                return author_name.strip()
+        
+        return None
+
+    def _is_book_to_author_pattern(self, query: str) -> bool:
+        """쿼리가 작품명→작가명 패턴인지 확인."""
+        import re
+        
+        # 작품명→작가명 패턴들
+        book_to_author_patterns = [
+            r'.+\s+작가\s*(?:가|는|을|를)?\s*(?:누구|뭐)',      # "1984 작가 누구야"
+            r'.+(?:을|를|은)?\s*(?:누가|누구가)\s*(?:쓴|썼)',  # "노르웨이의 숲은 누가 썼어"
+            r'.+(?:을|를)?\s*쓴\s+(?:작가|사람)\s*(?:은|는|가|를)?\s*(?:누구|뭐)',          # "인간실격을 쓴 사람은 누구야"
+            r'.+\s+쓴\s+(?:작가|사람)\s*(?:누구|뭐)',          # "화차 쓴 작가 누구야"
+            r'.+\s+(?:저자|지은이)\s*(?:가|는|을|를)?\s*(?:누구|뭐)',  # "개미 저자 누구야"
+        ]
+        
+        for pattern in book_to_author_patterns:
+            if re.search(pattern, query, re.IGNORECASE):
+                return True
+        
+        return False
+    
+    def _extract_book_title_from_query(self, query: str) -> str:
+        """쿼리에서 작품명을 추출."""
+        import re
+        
+        # 작품명 추출 패턴들 (구체적 패턴을 먼저 확인)
+        extract_patterns = [
+            r'(.+?)(?:을|를|은)?\s*(?:누가|누구가)\s*(?:쓴|썼)',     # "노르웨이의 숲은 누가 썼어" → "노르웨이의 숲"
+            r'(.+?)(?:을|를)?\s*쓴\s+(?:작가|사람)\s*(?:은|는|가|를)?\s*(?:누구|뭐)',  # "인간실격을 쓴 사람은 누구야" → "인간실격"
+            r'(.+?)\s+쓴\s+(?:작가|사람)\s*(?:가|는|을|를)?\s*(?:누구|뭐)',   # "화차 쓴 작가 누구야" → "화차"
+            r'(.+?)\s+(?:저자|지은이)\s*(?:가|는|을|를)?\s*(?:누구|뭐)',      # "개미 저자 누구야" → "개미"
+            r'(.+?)\s+작가\s*(?:가|는|을|를)?\s*(?:누구|뭐)',           # "1984 작가 누구야" → "1984"
+        ]
+        
+        for pattern in extract_patterns:
+            match = re.search(pattern, query, re.IGNORECASE)
+            if match:
+                extracted = match.group(1).strip()
+                # 작품명 끝의 조사 제거
+                extracted = re.sub(r'[은는이가을를의]$', '', extracted).strip()
+                
+                # "그리고"가 포함된 경우 스마트 처리
+                if "그리고" in extracted:
+                    extracted = self._handle_conjunction_in_title(extracted, query)
+                
+                print(f"[DEBUG] Pattern '{pattern}' extracted '{extracted}' from '{query}'")
+                return extracted
+        
+        return None
+
+    def _handle_conjunction_in_title(self, extracted: str, original_query: str) -> str:
+        """'그리고'가 포함된 작품명을 스마트하게 처리."""
+        
+        # "그리고"로 분리
+        parts = extracted.split("그리고")
+        
+        if len(parts) == 2:
+            first_part = parts[0].strip()
+            second_part = parts[1].strip()
+            
+            # 1. "그리고"가 작품명의 일부인지 확인
+            # - 첫 번째 부분이 비어있거나 매우 짧으면 작품명의 일부
+            # - "그리고 아무도 없었다" 같은 경우
+            if len(first_part) == 0 or (len(first_part) <= 2 and not first_part.isdigit()):
+                print(f"[DEBUG] Conjunction: 전체 작품명으로 판단 - '{extracted}'")
+                return extracted
+            
+            # 2. 첫 번째 부분이 작품명으로 보이는 경우도 전체를 유지
+            # - 길이가 적절하고 숫자가 아닌 경우 전체 제목일 가능성 높음
+            if (2 <= len(first_part) <= 8 and 
+                not first_part.isdigit() and
+                not any(word in first_part for word in ['소설', '책', '작품', '시집', '영화'])):
+                print(f"[DEBUG] Conjunction: 전체 작품명으로 판단 - '{extracted}'")
+                return extracted
+            
+            # 3. 두 개의 독립적인 항목으로 보이는 경우 (예: "1984 그리고 동물농장")
+            # 첫 번째가 숫자나 명확한 작품명인 경우
+            if first_part.isdigit() or len(first_part) > 8:
+                print(f"[DEBUG] Conjunction: 첫 번째 부분 선택 - '{first_part}'")
+                return first_part
+            else:
+                print(f"[DEBUG] Conjunction: 두 번째 부분 선택 - '{second_part}'")
+                return second_part
+        
+        # 분리가 제대로 되지 않은 경우 원본 반환
+        return extracted
+
+    def _generate_llm_answer(self, query: str, search_result: Dict[str, Any], author_name: str) -> str:
+        """LLM을 사용해서 자연스러운 답변 생성."""
+        if not self.llm_client:
+            # LLM 없으면 기본 포맷으로 폴백
+            return self.prompt.format_author_response(search_result)
+        
+        try:
+            content = search_result.get('content', '') + ' ' + search_result.get('summary', '')
+            url = search_result.get('url', '').replace('(', '%28').replace(')', '%29')
+            
+            system_prompt = """당신은 위키피디아 정보를 바탕으로 사용자의 질문에 답변하는 AI입니다.
+
+주어진 위키피디아 정보를 꼼꼼히 읽고 사용자의 질문에 정확하고 자연스럽게 답변하세요.
+
+답변 규칙:
+1. 위키피디아 텍스트에서 관련 정보를 철저히 찾아보세요
+2. 부모님을 물어보면 아버지와 어머니 모두 찾아서 답변하세요
+3. "A와 B 사이에서 태어났다" 같은 표현에서 부모 정보를 추출하세요
+4. "소설가 X의 딸/아들" 같은 표현에서 부모 정보를 추출하세요
+5. 정보가 있으면 구체적으로 답변하고, 없으면 "찾을 수 없습니다"라고 답변
+6. 자연스러운 한국어 사용
+7. 간결하고 명확하게 작성
+
+답변 예시:
+- "한강은 소설가 한승원의 딸입니다."
+- "베르나르 베르베르의 아버지는 프랑수아 베르베르이고, 어머니는 셀린 베르베르입니다."
+- "한강의 대표작으로는 《채식주의자》, 《소년이 온다》 등이 있습니다."
+"""
+
+            user_prompt = f"""사용자 질문: {query}
+작가명: {author_name}
+
+위키피디아 정보:
+{content[:5000]}
+
+위의 정보를 바탕으로 사용자의 질문에 답변해주세요."""
+
+            print(f"[DEBUG] LLM에게 전달되는 정보 (처음 500자): {content[:500]}")
+            print(f"[DEBUG] '아버지' 키워드 포함 여부: {'아버지' in content}")
+            print(f"[DEBUG] '어머니' 키워드 포함 여부: {'어머니' in content}")
+            print(f"[DEBUG] '프랑수아' 키워드 포함 여부: {'프랑수아' in content}")
+            print(f"[DEBUG] '셀린' 키워드 포함 여부: {'셀린' in content}")
+            print(f"[DEBUG] '사이에서' 키워드 포함 여부: {'사이에서' in content}")
+
+            response = self.llm_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.3,
+                max_tokens=500
+            )
+            
+            llm_answer = response.choices[0].message.content.strip()
+            
+            # URL이 없으면 추가
+            if "**상세 정보**" not in llm_answer:
+                llm_answer += f"\n\n**상세 정보**: {url}"
+            
+            return llm_answer
+            
+        except Exception as e:
+            print(f"[DEBUG] LLM 답변 생성 실패: {e}")
+            # 폴백: 기존 템플릿 방식
+            return self.prompt.format_author_response(search_result)
+
+    def _find_father_info(self, content: str) -> str:
+        family_info = self._find_family_info(content)
+        return family_info.get('father')
+
+    def _find_mother_info(self, content: str) -> str:
+        family_info = self._find_family_info(content)
+        return family_info.get('mother')
+
+    def _find_family_info(self, content: str) -> dict:
+        import re
+
+        result = {
+            'father': None,
+            'mother': None,
+            'family': []
+        }
+
+        # 1. "A와 B 사이에서" 패턴 처리 (우선순위)
+        birth_pattern = re.search(r'([가-힣A-Za-z\s]+)\s*와\s*(?:어머니\s*)?([가-힣A-Za-z\s]+)\s*사이에서\s*태어났다', content)
+        if birth_pattern:
+            father_candidate = birth_pattern.group(1).strip()
+            mother_candidate = birth_pattern.group(2).strip()
+            
+            # 아버지 후보 검증 (30자 이하, 적절한 이름 형태)
+            if len(father_candidate) <= 30 and not any(word in father_candidate for word in ['어머니', '사이에서', '태어났다']):
+                result['father'] = father_candidate
+                result['family'].append({'relation': 'father', 'name': father_candidate})
+            
+            # 어머니 후보 검증
+            if len(mother_candidate) <= 30 and not any(word in mother_candidate for word in ['아버지', '사이에서', '태어났다']):
+                result['mother'] = mother_candidate
+                result['family'].append({'relation': 'mother', 'name': mother_candidate})
+
+        # 2. "소설가 OO의 딸/아들" 패턴 처리
+        if not result['father'] or not result['mother']:
+            child_patterns = [
+                r'(?:소설가|작가|시인)\s+([가-힣A-Za-z\s·\-]{2,10})\s*의\s+(딸|아들)',
+                r'([가-힣A-Za-z\s·\-]{2,10})\s*의\s+(딸|아들)'
+            ]
+            
+            for pattern in child_patterns:
+                matches = re.findall(pattern, content)
+                for parent_name, relation in matches:
+                    parent_name = parent_name.strip()
+                    parent_name = re.sub(r'^(소설가|작가|시인)\s*', '', parent_name).strip()
+                    
+                    if len(parent_name) >= 2 and len(parent_name) <= 10:
+                        if not result['father']:
+                            result['father'] = parent_name
+                            result['family'].append({'relation': 'father', 'name': parent_name})
+                        elif not result['mother'] and parent_name != result['father']:
+                            result['mother'] = parent_name
+                            result['family'].append({'relation': 'mother', 'name': parent_name})
+
+        # 3. 명시적 "아버지" 키워드 패턴 (이미 찾지 못한 경우만)
+        if not result['father']:
+            match_father = re.search(r'아버지[\s:은는이가]*\s*([가-힣A-Za-z·\-]{2,10})(?=\s|$|,|\.|와|과)', content)
+            if match_father:
+                name = match_father.group(1).strip()
+                # "생애" 같은 섹션 제목 제거
+                if name not in ['생애', '개요', '경력', '작품', '수상']:
+                    result['father'] = name
+                    result['family'].append({'relation': 'father', 'name': name})
+
+        # 4. 명시적 "어머니" 키워드 패턴 (이미 찾지 못한 경우만)
+        if not result['mother']:
+            match_mother = re.search(r'어머니[\s:은는이가]*\s*([가-힣A-Za-z·\-]{2,10})(?=\s|$|,|\.|와|과)', content)
+            if match_mother:
+                name = match_mother.group(1).strip()
+                # "생애" 같은 섹션 제목 제거
+                if name not in ['생애', '개요', '경력', '작품', '수상']:
+                    result['mother'] = name
+                    result['family'].append({'relation': 'mother', 'name': name})
+
+        return result
