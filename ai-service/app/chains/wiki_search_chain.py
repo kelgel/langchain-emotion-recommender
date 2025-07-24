@@ -84,47 +84,52 @@ class WikiSearchChain:
         return self._fresh_search_flow(query, context)
 
     def _fresh_search_flow(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
-        """LLM intent 분석, fresh 검색, 답변 생성, context 갱신까지 한 번에 처리"""
+        """[수정됨] LLM intent 분석 결과를 기반으로 명확하게 워크플로우를 분기."""
+        # 1. LLM으로 사용자 의도 분석 (이 결과를 유일한 진실로 간주)
         query_intent = self._analyze_query_intent(query, context)
-        if query_intent['type'] == 'context_question':
-            # context_question이어도 새로운 작가명이 키워드에 있으면 새로 검색
-            if query_intent.get('extracted_keywords') and len(query_intent.get('extracted_keywords', [])) > 0:
-                # 키워드에서 작가명을 찾았으니 새로운 검색으로 처리
-                pass  # 아래로 계속 진행해서 author_search로 처리
+        intent_type = query_intent.get('type')
+
+        # 2. 의도에 따라 명확히 다른 핸들러 호출
+        if intent_type == 'book_to_author':
+            # 책 -> 작가 찾기
+            book_title = query_intent.get('book_title')
+            if book_title:
+                return self._handle_book_to_author_query(book_title, context)
             else:
-                return self._handle_context_question(query, context)
-        if query_intent['type'] == 'book_to_author':
-            book_title = self._extract_book_title_from_query(query)
-            if not book_title and query_intent.get('keywords'):
-                book_title = query_intent['keywords'][0]
-            if book_title:
-                return self._handle_book_to_author_query(book_title, context)
-        elif query_intent['type'] not in ['new_search', 'author_search']:
-            if self._is_book_to_author_pattern(query):
-                book_title = self._extract_book_title_from_query(query)
-                if book_title:
-                    return self._handle_book_to_author_query(book_title, context)
-            return {
-                'action': 'error',
-                'message': '죄송합니다. 작가 정보 검색만 가능합니다. 작가에 대해 질문해주세요.',
-                'update_context': {}
-            }
-        if self._is_book_to_author_pattern(query):
-            book_title = self._extract_book_title_from_query(query)
-            if book_title:
-                return self._handle_book_to_author_query(book_title, context)
-        if query_intent.get('keywords'):
-            author_name = query_intent['keywords'][0]
-        elif query_intent.get('extracted_keywords') and len(query_intent.get('extracted_keywords', [])) > 0:
-            author_name = query_intent['extracted_keywords'][0]
+                # LLM이 책 제목을 못찾은 경우
+                return {
+                    'action': 'error',
+                    'message': '작품명을 정확히 파악하지 못했습니다. 더 명확하게 질문해주시겠어요?',
+                    'update_context': {}
+                }
+
+        elif intent_type == 'author_search':
+            # 작가 정보 검색
+            author_name = query_intent.get('keywords', [None])[0]
+            if author_name:
+                return self._handle_author_search_query(query, author_name, query_intent, context)
+            else:
+                # LLM이 작가명을 못찾은 경우
+                return {
+                    'action': 'error',
+                    'message': '작가명을 정확히 파악하지 못했습니다. 더 명확하게 질문해주시겠어요?',
+                    'update_context': {}
+                }
+
+        elif intent_type == 'context_question':
+            # 이전 대화 기반 질문
+            return self._handle_context_question(query, context)
+
         else:
-            author_name = WikiTextProcessor.extract_author_name(query, self.llm_client)
-        if not author_name:
+            # 의도를 파악하지 못한 경우
             return {
                 'action': 'error',
-                'message': self.prompt.get_ambiguous_query_message(),
+                'message': '죄송합니다. 질문의 의도를 명확히 파악하지 못했습니다. 다시 질문해주세요.',
                 'update_context': {}
             }
+
+    def _handle_author_search_query(self, query: str, author_name: str, query_intent: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+        """[신규] 작가명으로 정보를 검색하고 답변을 생성하는 워크플로우."""
         search_patterns = [
             f"{author_name} (작가)",
             f"{author_name} (소설가)",
@@ -137,8 +142,10 @@ class WikiSearchChain:
             if temp_result['success'] and self._is_author_result(temp_result):
                 search_result = temp_result
                 break
+        
         if not search_result:
             search_result = self.tool.search_page(author_name)
+
         if not search_result['success']:
             return {
                 'action': 'ask_clarification',
@@ -148,21 +155,8 @@ class WikiSearchChain:
                     'current_author': author_name
                 }
             }
+
         if self._is_author_result(search_result):
-            llm_specific_info = query_intent.get('specific_info_request')
-            fallback_specific_info = self._extract_specific_info_request(query)
-            specific_info = fallback_specific_info if fallback_specific_info else llm_specific_info
-            if specific_info:
-                # LLM으로 자연스러운 답변 생성
-                llm_answer = self._generate_llm_answer(query, search_result, author_name)
-                return {
-                    'action': 'show_result',
-                    'message': llm_answer,
-                    'update_context': {
-                        'current_author': author_name,
-                        'last_search_result': search_result
-                    }
-                }
             # LLM으로 자연스러운 답변 생성
             llm_answer = self._generate_llm_answer(query, search_result, author_name)
             return {
@@ -170,18 +164,20 @@ class WikiSearchChain:
                 'message': llm_answer,
                 'update_context': {
                     'current_author': author_name,
-                    'last_search_result': search_result
+                    'last_search_result': search_result,
+                    'waiting_for_clarification': False,
                 }
             }
-        return {
-            'action': 'ask_clarification',
-            'message': self.prompt.get_clarification_request(author_name),
-            'update_context': {
-                'waiting_for_clarification': True,
-                'current_author': author_name
+        else:
+            # [수정] 검색은 됐지만 작가가 아닌 경우, 명확한 메시지와 함께 에러 처리
+            return {
+                'action': 'error',
+                'message': '도서/작가/출판사와 관련된 정보만 질문해주세요.',
+                'update_context': {
+                    'waiting_for_clarification': False,
+                    'current_author': None,
+                }
             }
-        }
-
 
     def _handle_clarification_response(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """사용자가 대표작품을 제공한 후의 처리."""
@@ -452,8 +448,8 @@ class WikiSearchChain:
             url = search_result.get('url', '')
             clickable_url = url.replace('(', '%28').replace(')', '%29')
             
-            # 작가명 추출해서 메시지에 포함
-            author_name = self._extract_author_from_work_page(search_result)
+            # [수정] LLM을 사용하여 작가명 추출
+            author_name = self._extract_author_with_llm(search_result)
             
             # 작품 정보 포맷팅
             message = f"**{successful_title}**\n\n"
@@ -577,30 +573,32 @@ class WikiSearchChain:
         return None
 
     def _is_author_result(self, search_result: Dict[str, Any]) -> bool:
-        """검색 결과가 작가 정보인지 판단."""
+        """[수정] 검색 결과가 작가 정보인지 더 명확하게 판단."""
         if not search_result.get('success', False):
             return False
 
-        # 제목과 요약에서 작가 관련 키워드 검색
-        content = (
-            search_result.get('title', '') + ' ' + 
-            search_result.get('summary', '') + ' ' + 
-            search_result.get('content', '')
-        ).lower()
-
-        # 직접 작가 키워드
-        direct_author_keywords = ['작가', '소설가', '시인', '저자', '만화가']
-        if any(keyword in content for keyword in direct_author_keywords):
+        summary = search_result.get('summary', '').lower()
+        content = search_result.get('content', '').lower()
+        
+        # 1. 요약의 첫 문장에서 직업 확인 (가장 신뢰도 높음)
+        # 마침표나 개행으로 첫 문장 분리
+        first_sentence = summary.split('.')[0].split('\n')[0]
+        
+        primary_occupations = ['소설가', '작가', '시인', '만화가', '극작가', '저술가']
+        if any(job in first_sentence for job in primary_occupations):
             return True
             
-        # 작품 페이지에서 작가 정보 추출 (작품명으로 검색했을 때)
-        work_indicators = ['웹툰', '소설', '만화', '시집', '연재', '출간', '발표']
-        author_mentions = ['지은이', '쓴이', '작가', '저자', '글', '그린이']
-        
-        has_work = any(keyword in content for keyword in work_indicators)
-        has_author_mention = any(keyword in content for keyword in author_mentions)
-        
-        return has_work and has_author_mention
+        # 2. '저서' 또는 '작품' 섹션 존재 여부 확인 (차선책)
+        if '## 저서' in content or '## 작품' in content:
+            return True
+
+        # 3. 기존의 키워드 기반 로직 (최후의 보루)
+        content_full = (search_result.get('title', '') + ' ' + summary + ' ' + content).lower()
+        author_keywords = ['작가', '소설가', '시인', '저자', '만화가', '지은이', '쓴이']
+        if any(keyword in content_full for keyword in author_keywords):
+            return True
+
+        return False
 
     def _is_new_author_query(self, query: str) -> bool:
         """새로운 작가에 대한 질문인지 판단."""
@@ -1277,6 +1275,51 @@ JSON 형식으로 응답:
                 return author_name.strip()
         
         return None
+
+    def _extract_author_with_llm(self, search_result: Dict[str, Any]) -> str:
+        """[신규] LLM을 사용하여 작품 페이지에서 작가명을 추출."""
+        if not self.llm_client:
+            # LLM이 없으면 기존 폴백 메소드 사용
+            return self._extract_author_from_work_page(search_result)
+
+        try:
+            content = search_result.get('content', '') + ' ' + search_result.get('summary', '')
+            
+            system_prompt = """당신은 주어진 텍스트에서 작품의 저자(작가) 이름을 정확히 추출하는 AI입니다.
+
+추출 규칙:
+- 텍스트 내용을 기반으로 저자의 이름만 정확히 추출하세요.
+- 여러 명일 경우 모두 쉼표로 구분하여 나열하세요 (예: 진수, 배송지).
+- "저자:", "작가:" 같은 부가적인 설명 없이 이름만 반환하세요.
+- 이름이 언급되지 않았거나 찾을 수 없으면 "None"이라고만 응답하세요.
+
+예시:
+- 입력: "...이 작품은 현진건에 의해 발표되었다..." -> 출력: 현진건
+- 입력: "...《삼국지》(三國志)는 서진(西晉)의 진수(陳壽)가 쓰고 유송(劉宋)의 배송지(裴松之)가 내용을 보충한..." -> 출력: 진수, 배송지
+- 입력: "...이 소설의 작가는 알려져 있지 않다..." -> 출력: None
+"""
+            user_prompt = f"다음 텍스트에서 이 작품의 저자(작가) 이름을 추출하세요:\n\n{content[:2500]}"
+
+            response = self.llm_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.1,
+                max_tokens=100
+            )
+            
+            author_name = response.choices[0].message.content.strip()
+            
+            if author_name.lower() == 'none':
+                return None
+            
+            return author_name
+            
+        except Exception as e:
+            # 예외 발생 시 폴백
+            return self._extract_author_from_work_page(search_result)
 
     def _is_book_to_author_pattern(self, query: str) -> bool:
         """쿼리가 작품명→작가명 패턴인지 확인."""
