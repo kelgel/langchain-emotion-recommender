@@ -3,16 +3,61 @@ main_agent.py
 main_agent 메인 에이전트-쿼리 라우팅
 """
 
-from langchain.chains import LLMChain
+from main_agent.intent_router import route_intent
 from chains import query_analysis_chain, intent_classify_chain
+from chains.clarification_chain import get_clarification_chain
+from utils.clarification_checker import needs_clarification
+from dotenv import load_dotenv
 
-user_input = "채식주의자 책을 쓴 사람에 대해서 알고싶어" #"우울하니까 위로가 되는 에세이를 추천해줘"
+load_dotenv()
 
-#query_analysis_response = query_analysis_chain.run(user_input=user_input)
-# 최신 방식: .invoke() 사용, dict로 전달
-query_analysis_response = query_analysis_chain.invoke({"user_input": user_input})
-print(query_analysis_response)
+# def run_pipeline(user_input: str):
+#     #1. 질의 분석 - 감정/장르/키워드 추출
+#     query_analysis = query_analysis_chain.invoke({"user_input": user_input})
+#     print(f"📌 분석 결과: {query_analysis}")
+#
+#     #2. 화행 분류
+#     intent = intent_classify_chain.invoke({"user_input": user_input})
+#     print(f"📌 분류된 의도: {intent}")
+#
+#     #3. 필수 키워드 누락 여부 검사 - True면 clarification_prompt로 재질문 진행
+#     if needs_clarification(intent, query_analysis):
+#         clarification_chain = get_clarification_chain(intent)
+#         clarification_message = clarification_chain.invoke(query_analysis)
+#         print(f"❓ {clarification_message}")
+#
+#
+# if __name__ == "__main__":
+#     user_input = input("사용자 질문: ")
+#     result = run_pipeline(user_input)
+#     print("\n🤖 챗봇 응답:\n", result)
 
-#intent_classify_response = intent_classify_chain.run(user_input=user_input)
-intent_classify_response = intent_classify_chain.invoke({"user_input": user_input})
-print(intent_classify_response)
+def run_pipeline():
+    while True:
+        user_input = input("💬 사용자 질문: ")
+
+        # 1. 질의 분석
+        query = query_analysis_chain.invoke({"user_input": user_input})
+        print(f"📌 분석 결과: {query}")
+
+        # 2. 화행 분류
+        intent = intent_classify_chain.invoke({"user_input": user_input})
+        print(f"📌 분류된 의도: {intent}")
+
+        # 3. 필수 정보 누락 시 clarification loop
+        while needs_clarification(intent, query):
+            clarification_chain = get_clarification_chain(intent)
+            clarification_message = clarification_chain.invoke(query)
+            print(f"❓ 추가 질문: {clarification_message.content}")
+
+            user_input = input("↩️ 사용자 응답: ")
+            query = query_analysis_chain.invoke({"user_input": user_input})
+            print(f"📌 재분석 결과: {query}")
+
+        # 4. 최종 intent 처리
+        route_intent(intent, query)
+        #print(f"\n🤖 챗봇 응답:\n{response}")
+        #break
+
+if __name__ == "__main__":
+    run_pipeline()
