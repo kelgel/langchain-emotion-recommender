@@ -174,36 +174,13 @@ class WikiSearchChain:
             }
         }
 
-    def _handle_initial_query(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        최초 작가 검색 쿼리를 처리.
-        
-        엣지케이스 처리:
-        - 빈 쿼리
-        - 작가명 추출 실패
-        - 검색 결과 없음
-        - 동명이인 (작가가 아닌 결과)
-        """
-        try:
-            # 컨텍스트 상태 확인 및 분기
-            if context.get('waiting_for_clarification', False):
-                return self._handle_clarification_response(query, context)
-            else:
-                return self._handle_initial_query(query, context)
-                
-        except Exception as e:
-            return {
-                'action': 'error',
-                'message': self.prompt.get_general_error_message(),
-                'update_context': {}
-            }
 
     def _handle_clarification_response(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """사용자가 대표작품을 제공한 후의 처리."""
         # 새로운 작가 질문인지 체크
         if self._is_new_author_query(query):
-            # 새로운 작가에 대한 질문 → 초기 쿼리로 재처리 (컨텍스트 완전 초기화)
-            result = self._handle_initial_query(query, {})
+            # 새로운 작가에 대한 질문 → fresh 검색으로 재처리 (컨텍스트 완전 초기화)
+            result = self._fresh_search_flow(query, {})
             
             # Agent에게 컨텍스트를 완전히 리셋하라고 지시
             if 'update_context' not in result:
@@ -1397,33 +1374,6 @@ JSON 형식으로 응답:
         # 예: '한강', '제인 오스틴', 'Agatha Christie', 'J. K. Rowling'
         return bool(re.search(r'([가-힣]{2,}(\s[가-힣]{2,})*|[A-Za-z]{2,}(\s[A-Za-z\.]{1,})*)', query))
 
-    def _is_new_author_mentioned(self, query: str, context: Dict[str, Any]) -> bool:
-        """새로운 작가가 언급되었는지 확인."""
-        import re
-        
-        current_author = context.get('current_author') or ''
-        if current_author:
-            current_author = current_author.strip()
-        
-        # 명시적 작가명 패턴 (띄어쓰기 유연하게)
-        author_patterns = [
-            r'(김영하|한강|무라카미\s*하루키|박민규|정유정|이문열|조석|박완서)(?:\s*작가)?',  # 알려진 작가명 + 선택적 "작가"
-            r'([가-힣]{2,4})(?:\s*작가)',  # "작가"가 붙은 이름
-            r'[가-힣]{2,3}\s+[가-힣]{2,3}',  # 한국식 성명 패턴
-        ]
-        
-        for pattern in author_patterns:
-            matches = re.findall(pattern, query)
-            for match in matches:
-                mentioned_author = match.strip()
-                # 현재 대화 중인 작가와 다른 작가가 언급된 경우
-                if mentioned_author and mentioned_author != current_author:
-                    # 작가 관련 질문인지 확인
-                    author_keywords = ['작가', '저자', '작품', '대표작', '누구', '알려줘', '대해', '몇살', '나이', '대학', '학교', '수상', '상', '경력', '이력', '정보']
-                    if any(word in query for word in author_keywords):
-                        return True
-        
-        return False
 
     def _contains_author_info(self, search_result: Dict[str, Any]) -> bool:
         """검색 결과에 작가 정보가 포함되어 있는지 확인."""
@@ -1563,31 +1513,51 @@ JSON 형식으로 응답:
             
             system_prompt = """당신은 위키피디아 정보를 바탕으로 사용자의 질문에 답변하는 AI입니다.
 
-주어진 위키피디아 정보를 꼼꼼히 읽고 사용자의 질문에 정확하고 자연스럽게 답변하세요.
+사용자의 질문 유형에 따라 적절한 범위의 정보를 제공하세요:
 
-답변 규칙:
-1. 위키피디아 텍스트에서 관련 정보를 철저히 찾아보세요
-2. 부모님을 물어보면 아버지와 어머니 모두 찾아서 답변하세요
-3. "A와 B 사이에서 태어났다" 같은 표현에서 부모 정보를 추출하세요
-4. "소설가 X의 딸/아들" 같은 표현에서 부모 정보를 추출하세요
-5. 정보가 있으면 구체적으로 답변하고, 없으면 "찾을 수 없습니다"라고 답변
-6. 자연스러운 한국어 사용
-7. 간결하고 명확하게 작성
+**1. 기본 소개 질문** ("OO 작가에 대해 알려줘", "OO는 누구야?")
+→ 위키피디아 첫 번째 문단(서머리)의 핵심 정보만 제공
+→ 출생년도, 국적, 주요 업적, 대표작 위주
 
-답변 예시:
-- "한강은 소설가 한승원의 딸입니다."
-- "베르나르 베르베르의 아버지는 프랑수아 베르베르이고, 어머니는 셀린 베르베르입니다."
-- "한강의 대표작으로는 《채식주의자》, 《소년이 온다》 등이 있습니다."
+**2. 구체적 정보 질문** ("부모님은?", "대표작은?", "언제 태어났어?")
+→ 해당 질문에 직접 관련된 정보만 제공
+→ 부모님을 물어보면 아버지와 어머니 정보 찾기
+→ "A와 B 사이에서 태어났다", "소설가 X의 딸/아들" 패턴 인식
+
+**답변 규칙:**
+- 질문 범위에 맞는 정보만 제공 (불필요한 정보 포함 금지)
+- 정보가 없으면 "찾을 수 없습니다"라고 솔직히 답변
+- 자연스러운 한국어 사용
+- 간결하고 명확하게 작성
+
+**답변 예시:**
+- 기본 소개: "한강은 1970년 출생의 한국 소설가로, 《채식주의자》로 국제부커상과 노벨문학상을 수상했습니다."
+- 구체적 질문: "한강은 소설가 한승원의 딸입니다."
 """
+
+            # 질문 유형 판단
+            query_lower = query.lower()
+            if any(word in query_lower for word in ['에 대해', '누구', '소개', '알려줘', '어떤']):
+                question_type = "기본 소개 질문"
+            elif any(word in query_lower for word in ['부모', '아버지', '어머니', '가족']):
+                question_type = "구체적 정보 질문 - 가족"
+            elif any(word in query_lower for word in ['대표작', '작품', '소설', '책']):
+                question_type = "구체적 정보 질문 - 작품"
+            elif any(word in query_lower for word in ['출생', '태어', '언제', '나이']):
+                question_type = "구체적 정보 질문 - 출생"
+            else:
+                question_type = "구체적 정보 질문"
 
             user_prompt = f"""사용자 질문: {query}
 작가명: {author_name}
+질문 유형: {question_type}
 
 위키피디아 정보:
-{content[:5000]}
+{content[:2500]}
 
-위의 정보를 바탕으로 사용자의 질문에 답변해주세요."""
+위의 정보를 바탕으로 질문 유형에 맞게 적절한 범위의 답변을 제공해주세요."""
 
+            print(f"[DEBUG] 질문 유형: {question_type}")
             print(f"[DEBUG] LLM에게 전달되는 정보 (처음 500자): {content[:500]}")
             print(f"[DEBUG] '아버지' 키워드 포함 여부: {'아버지' in content}")
             print(f"[DEBUG] '어머니' 키워드 포함 여부: {'어머니' in content}")
