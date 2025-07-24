@@ -105,6 +105,14 @@ class WikiSearchChain:
         """[수정됨] LLM intent 분석 결과를 기반으로 명확하게 워크플로우를 분기."""
         print(f"[DEBUG] _fresh_search_flow() 시작 - query: {query}")
         
+        # 관련 없는 질문 먼저 필터링
+        if self._is_irrelevant_query(query):
+            return {
+                'action': 'error',
+                'message': "죄송합니다. 도서, 작가, 출판사에 대한 질문만 답변드릴 수 있습니다. 다른 질문을 해주세요.",
+                'update_context': {}
+            }
+        
         # 1. LLM으로 사용자 의도 분석 (이 결과를 유일한 진실로 간주)
         query_intent = self._analyze_query_intent(query, context)
         print(f"[DEBUG] query_intent: {query_intent}")
@@ -508,6 +516,15 @@ class WikiSearchChain:
 
     def _handle_context_question(self, query: str, query_intent: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
         """[재설계 4.0] 맥락 기반 질문 처리. 규칙 기반 키워드 매칭 우선 적용."""
+        
+        # 관련 없는 질문 필터링
+        if self._is_irrelevant_query(query):
+            return {
+                'action': 'error',
+                'message': "죄송합니다. 도서, 작가, 출판사에 대한 질문만 답변드릴 수 있습니다. 다른 질문을 해주세요.",
+                'update_context': {}
+            }
+        
         author_name = context.get('current_author')
         last_search_result = context.get('last_search_result')
 
@@ -1616,6 +1633,33 @@ JSON 형식으로 응답:
     def _find_family_info(self, content: str) -> dict:
         """가족 정보 추출 - WikiInformationExtractor 사용"""
         return WikiInformationExtractor.find_enhanced_family_info(content, self.llm_client)
+    
+    def _is_irrelevant_query(self, query: str) -> bool:
+        """질문이 도서/작가/출판사와 관련이 없는지 판단."""
+        query_lower = query.lower().strip()
+        
+        # 완전히 관련 없는 표현들
+        irrelevant_patterns = [
+            '웃긴다', '웃기네', '웃겨', '재밌다', '재밌네', '재미있다',
+            '안녕', '반가워', '고마워', '감사', '미안', '죄송',
+            'ㅋㅋ', 'ㅎㅎ', '하하', '헤헤',
+            '날씨', '시간', '뭐해', '어디', '어떻게',
+            '좋다', '나쁘다', '싫다', '좋아해', '싫어해',
+            '밥', '먹어', '마셔', '자자', '졸려',
+            '몰라', '모르겠다', '뭐야', '왜',
+            '너는', '당신은', '넌', '너'
+        ]
+        
+        # 너무 짧은 질문 (3글자 이하이면서 의미있는 키워드가 없는 경우)
+        if len(query_lower) <= 3 and not any(word in query_lower for word in ['작가', '책', '소설', '시', '작품']):
+            return True
+        
+        # 관련 없는 패턴들
+        for pattern in irrelevant_patterns:
+            if pattern in query_lower:
+                return True
+        
+        return False
     
     def _handle_compound_query(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """복합 질문을 처리하는 함수 (예: '박경리와 한강에 대해 각각 알려줘')"""
