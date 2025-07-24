@@ -5,7 +5,7 @@ from config.llm import clarification_llm
 
 def get_clarification_chain(intent: str):
     prompt = get_clarification_prompt(intent)
-    return prompt | clarification_llm #| RunnableLambda(parse_keywords)
+    return prompt | clarification_llm | RunnableLambda(parse_keywords)
 
 
 

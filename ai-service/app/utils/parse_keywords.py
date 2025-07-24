@@ -6,27 +6,14 @@ import json
 
 def parse_keywords(output) -> dict:
     """
-    다양한 intent에 대응하는 키워드를 포함한 결과를 dict로 파싱
+    다양한 intent에 대응하는 키워드를 포함한 결과를 dict로 파싱.
+    누락된 필드가 있으면 기본값으로 채움.
     """
 
-    # AIMessage일 경우 content를 꺼냄
+    # AIMessage 또는 기타 객체의 content 속성 접근
     if hasattr(output, "content"):
         output = output.content
 
-    try:
-        return json.loads(output) #JSON 형식의 문자열을 파이썬 dict로 변환
-    except json.JSONDecodeError:
-        # 기본 필드만 빈 값으로 구성
-        return {
-            "emotion": None,
-            "genre": None,
-            "keywords": [],
-            "title": None,
-            "author": None,
-            "order_id": None
-        }
-
-    # 누락된 필드는 기본값으로 채우기
     defaults = {
         "emotion": None,
         "genre": None,
@@ -35,4 +22,15 @@ def parse_keywords(output) -> dict:
         "author": None,
         "order_id": None
     }
+
+    try:
+        parsed = json.loads(output)
+        if not isinstance(parsed, dict):
+            raise ValueError("Parsed result is not a dict")
+    except (json.JSONDecodeError, ValueError):
+        # 실패 시 defaults만 반환
+        return defaults
+
+    # 누락된 필드는 기본값으로 채움
     return {**defaults, **parsed}
+

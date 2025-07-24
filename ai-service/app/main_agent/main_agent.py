@@ -7,6 +7,8 @@ from main_agent.intent_router import route_intent
 from chains import query_analysis_chain, intent_classify_chain
 from chains.clarification_chain import get_clarification_chain
 from utils.clarification_checker import needs_clarification
+from prompts.clarification_prompt import get_clarification_prompt
+from config.llm import clarification_llm
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -46,9 +48,18 @@ def run_pipeline():
 
         # 3. 필수 정보 누락 시 clarification loop
         while needs_clarification(intent, query):
-            clarification_chain = get_clarification_chain(intent)
-            clarification_message = clarification_chain.invoke(query)
-            print(f"❓ 추가 질문: {clarification_message.content}")
+            # clarification_chain = get_clarification_chain(intent)
+            # clarification_message = clarification_chain.invoke(query)
+            # print(f"❓ 추가 질문: {clarification_message.content}")
+            #print(f"❓ 추가 질문: {clarification_message.get('content')}")
+
+            # [1] 프롬프트 준비
+            prompt = get_clarification_prompt(intent)
+            prompt_string = prompt.format(**query)
+
+            # [2] LLM 실행 → 자연어 메시지
+            llm_response = clarification_llm.invoke(prompt_string)
+            print(f"❓ 추가 질문: {llm_response.content}")  # 여긴 자연어 출력
 
             user_input = input("↩️ 사용자 응답: ")
             query = query_analysis_chain.invoke({"user_input": user_input})
