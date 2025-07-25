@@ -2,8 +2,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
-from langchain_openai import OpenAI
 import uvicorn
+import sys
+import os
+
+# 경로 설정
+current_dir = os.path.dirname(os.path.abspath(__file__))
+agents_dir = os.path.join(current_dir, 'app', 'agents')
+sys.path.insert(0, agents_dir)
+
+from wiki_search_agent import WikiSearchAgent
 
 load_dotenv()
 
@@ -17,8 +25,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# LLM 초기화
-llm = OpenAI(temperature=0)
+# WikiSearchAgent 초기화
+wiki_agent = WikiSearchAgent()
 
 class ChatRequest(BaseModel):
     message: str
@@ -30,10 +38,16 @@ async def root():
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     try:
-        response = llm(request.message)
-        return {"response": response, "success": True}
+        # WikiSearchAgent를 통해 처리
+        result = wiki_agent.process(request.message)
+        
+        if result.get('success', True):
+            return {"response": result.get('message', ''), "success": True}
+        else:
+            return {"response": result.get('message', '오류가 발생했습니다.'), "success": False}
+            
     except Exception as e:
-        return {"response": f"오류가 발생했습니다: {str(e)}", "success": False}
+        return {"response": f"AI 서비스 연결에 실패했습니다: {str(e)}", "success": False}
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

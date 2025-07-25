@@ -47,16 +47,17 @@ class WikiSearchAgent:
 
     def __init__(self):
         """에이전트를 초기화하고 체인과 세션 상태를 설정."""
-        self.chain = WikiSearchChain()
-        self.conversation_state = WikiConversationState()
-        
-        # OpenAI 클라이언트 초기화
+        # OpenAI 클라이언트 초기화 (Agent에서 리소스 관리)
         self.llm_client = None
         if OPENAI_AVAILABLE:
             try:
                 self.llm_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
             except Exception:
                 pass
+        
+        # Chain에 LLM 클라이언트 전달 (의존성 주입)
+        self.chain = WikiSearchChain(llm_client=self.llm_client)
+        self.conversation_state = WikiConversationState()
 
     def process(self, query: str) -> Dict[str, Any]:
         """사용자 쿼리를 처리하고 세션 상태를 관리."""
@@ -122,54 +123,13 @@ class WikiSearchAgent:
         return self.conversation_state.waiting_for_clarification
 
     def can_handle_query(self, query: str) -> bool:
-        """이 에이전트가 주어진 쿼리를 처리할 수 있는지 판단 (LLM 기반)."""
+        """이 에이전트가 주어진 쿼리를 처리할 수 있는지 판단 (키워드 기반)."""
         # 현재 대화가 진행 중이면 우선적으로 처리
         if self.is_conversation_active():
             return True
         
-        if self.llm_client:
-            return self._llm_can_handle_query(query)
-        else:
-            return self._fallback_can_handle_query(query)
-    
-    def _llm_can_handle_query(self, query: str) -> bool:
-        """LLM을 사용한 쿼리 처리 가능 여부 판단."""
-        try:
-            system_prompt = """당신은 쿼리 라우터입니다. 주어진 질문이 위키피디아 검색 에이전트(작가, 인물 정보 검색)가 처리해야 할 질문인지 판단하세요.
-
-위키피디아 검색 에이전트가 처리하는 질문들:
-- 작가, 소설가, 시인에 대한 정보
-- 인물의 학력, 출생, 작품 정보
-- "누구인지 알려줘" 같은 인물 정보 요청
-
-다른 에이전트가 처리하는 질문들:
-- 주문 조회, 배송 상태
-- 상품 재고, 가격 정보
-- 결제, 환불 관련
-
-JSON 형식으로 응답하세요:
-{
-    "can_handle": true/false,
-    "confidence": 0.0-1.0,
-    "reasoning": "판단 이유"
-}"""
-            
-            response = self.llm_client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"질문: {query}"}
-                ],
-                temperature=0.1,
-                max_tokens=200
-            )
-            
-            result = json.loads(response.choices[0].message.content)
-            return result.get('can_handle', False)
-            
-        except Exception as e:
-            # LLM 실패시 폴백
-            return self._fallback_can_handle_query(query)
+        # 키워드 기반 판단만 사용
+        return self._fallback_can_handle_query(query)
     
     def _fallback_can_handle_query(self, query: str) -> bool:
         """기존 키워드 기반 처리 가능 여부 판단 (폴백용)."""

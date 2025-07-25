@@ -398,8 +398,8 @@ JSON 형식으로 응답:
             'family': []
         }
 
-        # 1. "A와 B에 대해" 패턴 처리 (우선순위)
-        birth_pattern = re.search(r'([가-힣A-Za-z\s]+)\s*와\s*(?:어머니\s*)?([가-힣A-Za-z\s]+)\s*사이에서\s*태어났다', content)
+        # 1. "아버지 A와 어머니 B 사이에서 태어났다" 패턴 처리 (우선순위)
+        birth_pattern = re.search(r'아버지\s*([가-힣A-Za-z\s·\-]{2,20})\s*와\s*어머니\s*([가-힣A-Za-z\s·\-]{2,20})\s*사이에서\s*태어났다', content)
         if birth_pattern:
             father_candidate = birth_pattern.group(1).strip()
             mother_candidate = birth_pattern.group(2).strip()

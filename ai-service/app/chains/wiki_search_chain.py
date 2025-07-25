@@ -54,19 +54,16 @@ from wiki_search_prompt import WikiSearchPrompt
 class WikiSearchChain:
     """위키피디아 검색 워크플로우 체인 클래스."""
 
-    def __init__(self):
+    def __init__(self, llm_client=None):
         """체인을 초기화하고 필요한 컴포넌트들을 설정."""
         self.tool = WikipediaSearchTool()
         self.prompt = WikiSearchPrompt()
         
-        # OpenAI 클라이언트 초기화 (환경변수에서 API 키 로드)
-        self.llm_client = None
-        if OPENAI_AVAILABLE:
-            try:
-                self.llm_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-            except Exception:
-                # API 키가 없으면 폴백 모드로 동작
-                pass
+        # LLM 클라이언트는 Agent에서 전달받음 (의존성 주입)
+        self.llm_client = llm_client
+        
+        # 정보 추출기 import
+        from wiki_information_extractor import WikiInformationExtractor
 
     def execute(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """메인 질의 처리 함수: clarification/context/fresh 검색 분기 명확화"""
@@ -597,7 +594,7 @@ class WikiSearchChain:
         
         # 대표작/작품 질문
         if any(word in query_lower for word in ['대표작', '작품', '소설', '책']):
-            works_info = self._find_works_info(content)
+            works_info = WikiInformationExtractor.find_works_info(content, self.llm_client)
             if works_info:
                 return f"**{title}의 주요 작품:**\n{works_info}\n\n**상세 정보**: {url}"
             else:
@@ -728,7 +725,7 @@ class WikiSearchChain:
         
         if info_type == 'school':
             # 고등학교 정보 추출
-            school_info = self._find_school_info(content)
+            school_info = WikiInformationExtractor.find_school_info(content, self.llm_client)
             url = search_result.get('url', '').replace('(', '%28').replace(')', '%29')
             if school_info:
                 # 조사 자동 선택 (을/를)
@@ -752,7 +749,7 @@ class WikiSearchChain:
         
         elif info_type == 'university':
             # 대학 정보 추출
-            university_info = self._find_university_info(content)
+            university_info = WikiInformationExtractor.find_university_info(content, self.llm_client)
             url = search_result.get('url', '').replace('(', '%28').replace(')', '%29')
             
             if university_info:
@@ -765,7 +762,7 @@ class WikiSearchChain:
                     )
                 else:
                     # 대학교 졸업 안한 경우 → 고등학교가 최종학력
-                    school_info = self._find_school_info(content)
+                    school_info = WikiInformationExtractor.find_school_info(content, self.llm_client)
                     if school_info:
                         particle = "을" if school_info[-1] in "라마바사아자차카타파하" else "를"
                         return "{}은(는) {}{} 졸업했습니다 (최종학력).\n\n**상세 정보**: {}".format(
