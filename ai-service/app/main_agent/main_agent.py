@@ -13,27 +13,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# def run_pipeline(user_input: str):
-#     #1. 질의 분석 - 감정/장르/키워드 추출
-#     query_analysis = query_analysis_chain.invoke({"user_input": user_input})
-#     print(f"📌 분석 결과: {query_analysis}")
-#
-#     #2. 화행 분류
-#     intent = intent_classify_chain.invoke({"user_input": user_input})
-#     print(f"📌 분류된 의도: {intent}")
-#
-#     #3. 필수 키워드 누락 여부 검사 - True면 clarification_prompt로 재질문 진행
-#     if needs_clarification(intent, query_analysis):
-#         clarification_chain = get_clarification_chain(intent)
-#         clarification_message = clarification_chain.invoke(query_analysis)
-#         print(f"❓ {clarification_message}")
-#
-#
-# if __name__ == "__main__":
-#     user_input = input("사용자 질문: ")
-#     result = run_pipeline(user_input)
-#     print("\n🤖 챗봇 응답:\n", result)
-
 def run_pipeline():
     while True:
         user_input = input("💬 사용자 질문: ")
@@ -66,9 +45,9 @@ def run_pipeline():
             print(f"📌 재분석 결과: {query}")
 
         # 4. 최종 intent 처리
-        route_intent(intent, query)
-        #print(f"\n🤖 챗봇 응답:\n{response}")
-        #break
+        response = route_intent(intent, query)
+        print(f"\n🤖 챗봇 응답:\n{response}")
+        break
 
 if __name__ == "__main__":
     run_pipeline()
