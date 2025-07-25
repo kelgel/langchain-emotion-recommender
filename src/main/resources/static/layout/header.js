@@ -820,7 +820,23 @@ document.addEventListener('DOMContentLoaded', function() {
         function addMessage(text, type) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `${type}-message`;
-            messageDiv.textContent = text;
+            
+            // 텍스트 처리: 줄바꿈과 링크를 HTML로 변환
+            let processedText = text;
+            
+            // 줄바꿈 처리 (\n을 <br>로 변환)
+            processedText = processedText.replace(/\n/g, '<br>');
+            
+            // URL을 클릭 가능한 링크로 변환 (단어 경계와 긴 URL 처리)
+            processedText = processedText.replace(
+                /(https?:\/\/[^\s<>"']+)/g, 
+                '<a href="$1" target="_blank" rel="noopener noreferrer" class="chatbot-link">링크 보기</a>'
+            );
+            
+            // **볼드** 텍스트 처리
+            processedText = processedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            messageDiv.innerHTML = processedText;
             
             elements.chatbotMessages.appendChild(messageDiv);
             elements.chatbotMessages.scrollTop = elements.chatbotMessages.scrollHeight;
