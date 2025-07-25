@@ -775,7 +775,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // 메시지 전송 함수
-        function sendMessage() {
+        async function sendMessage() {
             const message = elements.chatbotInput.value.trim();
             if (!message) return;
             
@@ -788,11 +788,32 @@ document.addEventListener('DOMContentLoaded', function() {
             // 로딩 메시지 표시
             const loadingDiv = addLoadingMessage();
             
-            // API 호출 (임시로 더미 응답)
-            setTimeout(() => {
+            try {
+                // 실제 AI 채팅 API 호출
+                const response = await fetch('/api/chat/message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                const data = await response.json();
+                
+                // 로딩 메시지 제거
                 loadingDiv.remove();
-                addMessage('죄송합니다. 아직 AI 챗봇 서버가 연결되지 않았습니다. 곧 서비스 예정입니다! 📚', 'bot');
-            }, 1000);
+                
+                if (data.success) {
+                    addMessage(data.response, 'bot');
+                } else {
+                    addMessage(data.error || 'AI 서비스에서 오류가 발생했습니다.', 'bot');
+                }
+                
+            } catch (error) {
+                console.error('AI 채팅 오류:', error);
+                loadingDiv.remove();
+                addMessage('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'bot');
+            }
         }
         
         // 메시지 추가 함수

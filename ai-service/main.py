@@ -1,5 +1,3 @@
-import os
-import time
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -9,7 +7,7 @@ import uvicorn
 
 load_dotenv()
 
-app = FastAPI(title="AI Service")
+app = FastAPI(title="AI Bookstore Service")
 
 # CORS 설정 (Spring Boot와 통신용)
 app.add_middleware(
@@ -29,24 +27,13 @@ class ChatRequest(BaseModel):
 async def root():
     return {"message": "AI Service is running"}
 
-@app.get("/health")  # 👈 이 부분 추가
-async def health():
-    return {
-        "status": "healthy",
-        "timestamp": time.time_ns(),
-        "service": "AI Service",
-        "version": "1.0.0"
-    }
-
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
-    response = llm(request.message)
-    return {"response": response}
+    try:
+        response = llm(request.message)
+        return {"response": response, "success": True}
+    except Exception as e:
+        return {"response": f"오류가 발생했습니다: {str(e)}", "success": False}
 
 if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True  # 👈 핫 리로드 활성화
-    )
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
