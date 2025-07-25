@@ -334,19 +334,15 @@ JSON 형식으로 응답:
     @staticmethod
     def find_enhanced_family_info(content: str, llm_client=None) -> dict:
         """강화된 가족 정보 추출 (정규식 우선, LLM 폴백)"""
-        print(f"[DEBUG] find_enhanced_family_info 시작 - 정규식 우선 모드")
         
         # 스마트한 가족 정보 추출 - 부모와 형제자매 분리
         smart_result = WikiInformationExtractor._smart_family_extraction(content)
-        print(f"[DEBUG] 스마트 가족 정보 결과: {smart_result}")
         
         if smart_result.get('father') or smart_result.get('mother') or smart_result.get('siblings'):
-            print("[DEBUG] 스마트 파싱 성공, LLM 건너뜀")
             return smart_result
         
         # 먼저 정규식으로 처리 (더 정확함)
         regex_result = WikiInformationExtractor._regex_family_extraction(content)
-        print(f"[DEBUG] 정규식 가족 정보 결과: {regex_result}")
         
         if regex_result.get('father') or regex_result.get('mother'):
             return regex_result
@@ -355,11 +351,9 @@ JSON 형식으로 응답:
         if llm_client:
             try:
                 llm_result = WikiInformationExtractor._llm_find_family_info(content, llm_client)
-                print(f"[DEBUG] LLM 가족 정보 결과: {llm_result}")
                 if llm_result.get('father') or llm_result.get('mother'):
                     return llm_result
             except Exception as e:
-                print(f"[DEBUG] LLM 가족 정보 추출 실패: {e}")
                 pass
         
         # 둘 다 실패한 경우 기본값 반환
@@ -378,13 +372,11 @@ JSON 형식으로 응답:
         }
         
         # 직접 텍스트 파싱으로 해결
-        print(f"[DEBUG] 텍스트 파싱 시작")
         
         # "요시모토 다카아키의 차녀이자 만화가인 하루노 요이코의 동생이다" 패턴 직접 처리
         if "요시모토 다카아키" in content and "차녀" in content:
             result['father'] = "요시모토 다카아키"
             result['family'].append({'relation': 'father', 'name': '요시모토 다카아키'})
-            print(f"[DEBUG] 아버지 찾음: 요시모토 다카아키")
         
         if "하루노 요이코" in content and "동생" in content:
             result['siblings'].append({
@@ -392,7 +384,6 @@ JSON 형식으로 응답:
                 'relation': '언니'
             })
             result['family'].append({'relation': 'sibling', 'name': '하루노 요이코'})
-            print(f"[DEBUG] 형제자매 찾음: 하루노 요이코 (언니)")
         
         return result
     
@@ -407,7 +398,7 @@ JSON 형식으로 응답:
             'family': []
         }
 
-        # 1. "A와 B 사이에서" 패턴 처리 (우선순위)
+        # 1. "A와 B에 대해" 패턴 처리 (우선순위)
         birth_pattern = re.search(r'([가-힣A-Za-z\s]+)\s*와\s*(?:어머니\s*)?([가-힣A-Za-z\s]+)\s*사이에서\s*태어났다', content)
         if birth_pattern:
             father_candidate = birth_pattern.group(1).strip()
@@ -438,23 +429,13 @@ JSON 형식으로 응답:
             ]
             
             # 먼저 형제자매 관계인지 확인
-            for pattern in sibling_patterns:
-                match = re.search(pattern, content)
-                print(f"[DEBUG] 패턴 '{pattern}' 매칭 결과: {match}")
-                if match:
-                    print(f"[DEBUG] 매칭된 그룹: {match.groups()}")
-            
             is_sibling_context = any(re.search(pattern, content) for pattern in sibling_patterns)
-            print(f"[DEBUG] is_sibling_context (정규식): {is_sibling_context}")
             
             # 특별히 "동생" 키워드 직접 확인
             sibling_direct = "동생" in content or "형" in content or "누나" in content or "언니" in content or "오빠" in content
-            print(f"[DEBUG] 형제자매 키워드 직접 확인: {sibling_direct}")
             
             # 형제자매 키워드가 있으면 형제자매 관계로 간주
             is_sibling_context = is_sibling_context or sibling_direct
-            print(f"[DEBUG] 최종 is_sibling_context: {is_sibling_context}")
-            print(f"[DEBUG] content 일부: {content[:500]}")
             
             if not is_sibling_context:  # 형제자매가 아닌 경우만 부모로 간주
                 for pattern in child_patterns:
@@ -498,8 +479,6 @@ JSON 형식으로 응답:
     @staticmethod
     def _llm_find_family_info(content: str, llm_client) -> dict:
         """LLM을 사용한 가족 정보 추출."""
-        print(f"[DEBUG] _llm_find_family_info 시작")
-        print(f"[DEBUG] content 일부: {content[:300]}")
         try:
             system_prompt = """주어진 텍스트에서 인물의 가족 정보를 추출하세요.
 
@@ -550,8 +529,6 @@ JSON 형식으로 응답:
             )
             
             result = json.loads(response.choices[0].message.content)
-            print(f"[DEBUG] LLM 원시 응답: {response.choices[0].message.content}")
-            print(f"[DEBUG] 파싱된 결과: {result}")
             
             if result.get('found'):
                 final_result = {
@@ -559,10 +536,8 @@ JSON 형식으로 응답:
                     'mother': result.get('mother'),
                     'family': []
                 }
-                print(f"[DEBUG] 최종 반환 결과: {final_result}")
                 return final_result
             else:
-                print("[DEBUG] LLM이 found: false 반환")
                 return {'father': None, 'mother': None, 'family': []}
                 
         except Exception as e:
