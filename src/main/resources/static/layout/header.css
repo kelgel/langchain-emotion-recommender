@@ -558,7 +558,7 @@
     margin-top: 10px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     display: none;
-    z-index: 1002;
+    z-index: 1000;
     width: 320px; /* 고정 너비 설정 */
     /* 스크롤 제거 - 모든 목록 표시 */
 }
@@ -887,6 +887,7 @@
     overflow: hidden;
     max-height:calc(100vh - 159px);
     max-height:calc(100dvh - 159px);
+    z-index:1003;
 }
 
 .chatbot-window.active {
