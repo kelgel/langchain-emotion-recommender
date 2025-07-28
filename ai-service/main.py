@@ -20,7 +20,7 @@ app = FastAPI(title="AI Bookstore Service")
 # CORS 설정 (Spring Boot와 통신용)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080", "http://localhost:8081"],
+    allow_origins=["http://localhost:8080", "http://localhost:8001", "http://localhost:8003"],
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
@@ -34,6 +34,10 @@ class ChatRequest(BaseModel):
 @app.get("/")
 async def root():
     return {"message": "AI Service is running"}
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy", "message": "AI Service is running"}
 
 @app.post("/api/chat")
 async def chat(request: ChatRequest):

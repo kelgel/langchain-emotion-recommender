@@ -18,7 +18,8 @@ import java.util.Map;
 @Slf4j
 public class AIChatService {
 
-    private final String pythonServiceUrl = "http://localhost:8000";
+    @Value("${ai.service.base-url:http://ai-service:8000}")
+    private String pythonServiceUrl;
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
