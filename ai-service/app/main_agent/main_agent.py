@@ -27,11 +27,6 @@ def run_pipeline():
 
         # 3. 필수 정보 누락 시 clarification loop
         while needs_clarification(intent, query):
-            # clarification_chain = get_clarification_chain(intent)
-            # clarification_message = clarification_chain.invoke(query)
-            # print(f"❓ 추가 질문: {clarification_message.content}")
-            #print(f"❓ 추가 질문: {clarification_message.get('content')}")
-
             # [1] 프롬프트 준비
             prompt = get_clarification_prompt(intent)
             prompt_string = prompt.format(**query)
