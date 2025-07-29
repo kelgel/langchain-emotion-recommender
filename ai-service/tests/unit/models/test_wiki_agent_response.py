@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
 WikiQueryIntent 간단한 TDD 테스트
 🔴 Red → 🟢 Green → 🔵 Refactor
