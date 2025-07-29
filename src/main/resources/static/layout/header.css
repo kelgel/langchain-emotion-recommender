@@ -558,7 +558,7 @@
     margin-top: 10px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     display: none;
-    z-index: 1002;
+    z-index: 1000;
     width: 320px; /* 고정 너비 설정 */
     /* 스크롤 제거 - 모든 목록 표시 */
 }
@@ -877,7 +877,7 @@
     right: 0;
     bottom: 60px;
     width: 380px;
-    height: 510px;
+    height: 675px;
     background: white;
     border-radius: 20px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.15);
@@ -885,6 +885,9 @@
     display: none;
     flex-direction: column;
     overflow: hidden;
+    max-height:calc(100vh - 159px);
+    max-height:calc(100dvh - 159px);
+    z-index:1003;
 }
 
 .chatbot-window.active {
@@ -939,15 +942,45 @@
     background: #fafafa;
 }
 
+/* 챗봇 링크 스타일 */
+.chatbot-link {
+    color: #ffffff;
+    text-decoration: none;
+    padding: 2px 8px;
+    background: #797979;
+    border-radius: 4px;
+    border: 1px solid #797979;
+    font-size: 12px;
+    display: inline-block;
+    transition: all 0.2s ease;
+    word-break: break-all;
+    max-width: 100%;
+    margin-left:2px;
+}
+
+.chatbot-link:hover {
+    background: #000000;
+    border-color: #000000;
+    text-decoration: underline;
+}
+
+/* 메시지 텍스트 줄바꿈 처리 */
+.bot-message, .user-message {
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+    overflow-wrap: break-word;
+}
+
 /* 봇 메시지 */
 .bot-message {
     background: white;
-    padding: 15px;
+    padding: 9px 15px;
     border-radius: 15px 15px 15px 5px;
     max-width: 85%;
     align-self: flex-start;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    font-size: 14px;
+    font-size: 13px;
     line-height: 1.5;
     border: 1px solid #f0f0f0;
 }
@@ -956,11 +989,11 @@
 .user-message {
     background: #000000;
     color: white;
-    padding: 15px;
+    padding: 8px 15px;
     border-radius: 15px 15px 5px 15px;
     max-width: 85%;
     align-self: flex-end;
-    font-size: 14px;
+    font-size: 13px;
     line-height: 1.5;
 }
 
@@ -991,7 +1024,7 @@
 
 /* 챗봇 입력 영역 */
 .chatbot-input-area {
-    padding: 15px 20px 15px;
+    padding: 11px 20px 11px;
     background: white;
     border-top: 1px solid #f0f0f0;
 }
@@ -1044,7 +1077,7 @@
 /* 로딩 표시 */
 .loading-message {
     background: white;
-    padding: 15px;
+    padding: 10px 15px;
     border-radius: 15px 15px 15px 5px;
     max-width: 85%;
     align-self: flex-start;

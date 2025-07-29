@@ -131,6 +131,7 @@ JSON 형식으로 응답:
     def find_death_info(content: str, llm_client=None) -> str:
         """텍스트에서 사망 정보 추출."""
         death_patterns = [
+            r'~\s*(\d{4}년\s*\d{1,2}월\s*\d{1,2}일)',  # ~ YYYY년 MM월 DD일
             r'(\d{4}년\s*\d{1,2}월\s*\d{1,2}일[^가-힣]*사망)',
             r'(\d{4}\.\s*\d{1,2}\.\s*\d{1,2}[^가-힣]*사망)',
             r'(사망:\s*\d{4}년\s*\d{1,2}월\s*\d{1,2}일)'
@@ -332,8 +333,71 @@ JSON 형식으로 응답:
         return ""
     
     @staticmethod
+    def find_spouse_info(content: str) -> str:
+        """텍스트에서 배우자 정보 추출."""
+        import re
+        
+        # 배우자 패턴들
+        spouse_patterns = [
+            r'배우자\s*[는은이가]?\s*([가-힣A-Za-z\s·\-]{2,20})',  # "배우자는 홍길동"
+            r'아내\s*[는은이가]?\s*([가-힣A-Za-z\s·\-]{2,20})',   # "아내는 김영희"
+            r'남편\s*[는은이가]?\s*([가-힣A-Za-z\s·\-]{2,20})',   # "남편은 박철수"
+            r'부인\s*[는은이가]?\s*([가-힣A-Za-z\s·\-]{2,20})',   # "부인은 이순희"
+            r'처\s*[는은이가]?\s*([가-힣A-Za-z\s·\-]{2,20})',    # "처는 최명자"
+            r'와\s*결혼한\s*([가-힣A-Za-z\s·\-]{2,20})',        # "와 결혼한 김민수"
+            r'([가-힣A-Za-z\s·\-]{2,20})\s*와\s*결혼',         # "홍길동과 결혼"
+            r'([가-힣A-Za-z\s·\-]{2,20})\s*\(\d{4}년\s*~',     # "쓰시마 미치코 (1938년 ~" 형태
+        ]
+        
+        for pattern in spouse_patterns:
+            match = re.search(pattern, content)
+            if match:
+                spouse_name = match.group(1).strip()
+                # 잘못된 텍스트 필터링
+                invalid_words = ['생애', '개요', '경력', '작품', '수상', '에서', '소설가', '작가', '시인', '있다', '한다', '되다', '사별', '이혼']
+                if not any(word in spouse_name for word in invalid_words) and len(spouse_name) >= 2:
+                    return spouse_name
+        
+        return ""
+    
+    @staticmethod
     def find_enhanced_family_info(content: str, llm_client=None) -> dict:
-        """강화된 가족 정보 추출 (정규식 우선, LLM 폴백)"""
+        """강화된 가족 정보 추출 (LLM 우선, 정규식 폴백)"""
+        
+        # 정규식으로 먼저 처리
+        regex_result = WikiInformationExtractor._regex_family_extraction(content)
+        
+        # LLM으로 보완 처리 (정규식에서 못찾은 부분만)
+        if llm_client:
+            try:
+                # print(f"[DEBUG] LLM으로 가족 정보 추출 시도")
+                llm_result = WikiInformationExtractor._llm_find_family_info(content, llm_client)
+                # print(f"[DEBUG] LLM 결과: {llm_result}")
+                
+                # 정규식 결과와 LLM 결과 병합 (LLM이 더 정확한 경우 우선)
+                # LLM이 아버지를 찾았으면 정규식 결과를 덮어쓰기
+                if llm_result.get('father'):
+                    # 기존 정규식 father 결과 제거
+                    if regex_result.get('father'):
+                        regex_result['family'] = [f for f in regex_result['family'] if not (f.get('relation') == 'father' and f.get('name') == regex_result['father'])]
+                    regex_result['father'] = llm_result['father']
+                    regex_result['family'].append({'relation': 'father', 'name': llm_result['father']})
+                
+                # LLM이 어머니를 찾았으면 정규식 결과를 덮어쓰기  
+                if llm_result.get('mother'):
+                    # 기존 정규식 mother 결과 제거
+                    if regex_result.get('mother'):
+                        regex_result['family'] = [f for f in regex_result['family'] if not (f.get('relation') == 'mother' and f.get('name') == regex_result['mother'])]
+                    regex_result['mother'] = llm_result['mother']
+                    regex_result['family'].append({'relation': 'mother', 'name': llm_result['mother']})
+                    
+            except Exception as e:
+                # print(f"[DEBUG] LLM 에러: {e}")
+                pass
+        
+        # 정규식 결과가 있으면 반환
+        if regex_result.get('father') or regex_result.get('mother') or regex_result.get('family'):
+            return regex_result
         
         # 스마트한 가족 정보 추출 - 부모와 형제자매 분리
         smart_result = WikiInformationExtractor._smart_family_extraction(content)
@@ -341,23 +405,8 @@ JSON 형식으로 응답:
         if smart_result.get('father') or smart_result.get('mother') or smart_result.get('siblings'):
             return smart_result
         
-        # 먼저 정규식으로 처리 (더 정확함)
-        regex_result = WikiInformationExtractor._regex_family_extraction(content)
-        
-        if regex_result.get('father') or regex_result.get('mother'):
-            return regex_result
-        
-        # 정규식으로 찾지 못한 경우에만 LLM 사용
-        if llm_client:
-            try:
-                llm_result = WikiInformationExtractor._llm_find_family_info(content, llm_client)
-                if llm_result.get('father') or llm_result.get('mother'):
-                    return llm_result
-            except Exception as e:
-                pass
-        
-        # 둘 다 실패한 경우 기본값 반환
-        return {'father': None, 'mother': None, 'family': []}
+        # 모두 실패한 경우 기본값 반환
+        return {'father': None, 'mother': None, 'siblings': [], 'family': []}
     
     @staticmethod
     def _smart_family_extraction(content: str) -> dict:
@@ -392,27 +441,78 @@ JSON 형식으로 응답:
         """정규식 기반 가족 정보 추출"""
         import re
 
+        # print(f"[DEBUG] content 길이: {len(content)}")
+        # print(f"[DEBUG] content 첫 500자: {content[:500]}")
+
         result = {
             'father': None,
             'mother': None,
+            'siblings': [],
             'family': []
         }
 
-        # 1. "A와 B에 대해" 패턴 처리 (우선순위)
-        birth_pattern = re.search(r'([가-힣A-Za-z\s]+)\s*와\s*(?:어머니\s*)?([가-힣A-Za-z\s]+)\s*사이에서\s*태어났다', content)
+        # 1. "아버지 A와 어머니 B 사이에서 태어났다" 패턴 처리 (우선순위)
+        birth_patterns = [
+            r'아버지\s*([가-힣A-Za-z\s·\-]{2,30}?)\s*(?:와|과)\s*어머니\s*([가-힣A-Za-z\s·\-]{2,30}?)\s*사이에서\s*태어났다',
+            r'아버지\s*([가-힣A-Za-z\s·\-]{2,30}?)\s*(?:와|과)\s*어머니\s*([가-힣A-Za-z\s·\-]{2,30}?)\s*의?\s*아들',
+            r'아버지\s*([가-힣A-Za-z\s·\-]{2,30}?)\s*(?:와|과)\s*어머니\s*([가-힣A-Za-z\s·\-]{2,30}?)\s*의?\s*딸',
+            r'부친\s*([가-힣A-Za-z\s·\-]{2,30}?)\s*(?:와|과)\s*모친\s*([가-힣A-Za-z\s·\-]{2,30}?)',
+            # 일반적인 패턴: "A와 B 사이에서 태어났다" (직업/수식어 포함) - 더 구체적으로 수정
+            r'(?:대지주|지주|의사|교사|상인|농부|선생|장관|사업가|관리|판사|변호사|목사|신부|스님)\s+([가-힣A-Za-z\s·\-\(\)]{3,30}?)\s*(?:와|과)\s*([가-힣A-Za-z\s·\-\(\)]{2,20}?)\s*사이에서\s*태어났다',
+        ]
+        
+        birth_pattern = None
+        for pattern in birth_patterns:
+            birth_pattern = re.search(pattern, content)
+            if birth_pattern:
+                # print(f"[DEBUG] 매치된 패턴: {pattern}")
+                break
         if birth_pattern:
-            father_candidate = birth_pattern.group(1).strip()
-            mother_candidate = birth_pattern.group(2).strip()
+            parent1_candidate = birth_pattern.group(1).strip()
+            parent2_candidate = birth_pattern.group(2).strip()
+            # print(f"[DEBUG] birth_pattern 매치됨 - parent1: {parent1_candidate}, parent2: {parent2_candidate}")
             
-            # 아버지 후보 검증 (30자 이하, 적절한 이름 형태)
-            if len(father_candidate) <= 30 and not any(word in father_candidate for word in ['어머니', '사이에서', '태어났다']):
-                result['father'] = father_candidate
-                result['family'].append({'relation': 'father', 'name': father_candidate})
+            # 이름 정리: 괄호 제거, 직업 수식어 제거
+            def clean_name(name):
+                # 괄호와 그 안의 내용 제거
+                name = re.sub(r'\([^)]*\)', '', name)
+                # 앞쪽 직업 수식어 제거
+                name = re.sub(r'^(?:대지주|지주|의사|교사|상인|농부|선생|장관|사업가|관리|판사|변호사|목사|신부|스님)\s*', '', name)
+                return name.strip()
             
-            # 어머니 후보 검증
-            if len(mother_candidate) <= 30 and not any(word in mother_candidate for word in ['아버지', '사이에서', '태어났다']):
-                result['mother'] = mother_candidate
-                result['family'].append({'relation': 'mother', 'name': mother_candidate})
+            parent1_candidate = clean_name(parent1_candidate)
+            parent2_candidate = clean_name(parent2_candidate)
+            # print(f"[DEBUG] 정리된 이름 - parent1: {parent1_candidate}, parent2: {parent2_candidate}")
+            
+            # 명시적으로 "아버지"/"어머니"가 언급된 경우만 성별 구분, 나머지는 parent_unknown으로 처리
+            if "아버지" in birth_pattern.group(0) and "어머니" in birth_pattern.group(0):
+                # 아버지 후보 검증
+                if (len(parent1_candidate) <= 30 and len(parent1_candidate) >= 2 and 
+                    not any(word in parent1_candidate for word in ['어머니', '사이에서', '태어났다', '에서', '와'])):
+                    result['father'] = parent1_candidate
+                    result['family'].append({'relation': 'father', 'name': parent1_candidate})
+                    # print(f"[DEBUG] father 설정됨: {parent1_candidate}")
+                
+                # 어머니 후보 검증  
+                if (len(parent2_candidate) <= 30 and len(parent2_candidate) >= 2 and
+                    not any(word in parent2_candidate for word in ['아버지', '사이에서', '태어났다', '에서', '와'])):
+                    result['mother'] = parent2_candidate
+                    result['family'].append({'relation': 'mother', 'name': parent2_candidate})
+                    # print(f"[DEBUG] mother 설정됨: {parent2_candidate}")
+            else:
+                # 성별을 알 수 없는 경우 - 두 명 모두 parent_unknown으로 처리
+                for i, parent_candidate in enumerate([parent1_candidate, parent2_candidate], 1):
+                    if (len(parent_candidate) <= 30 and len(parent_candidate) >= 2 and 
+                        not any(word in parent_candidate for word in ['사이에서', '태어났다', '에서', '와'])):
+                        result['family'].append({
+                            'relation': 'parent_unknown', 
+                            'name': parent_candidate, 
+                            'detail': '성별 알 수 없음 (부모)'
+                        })
+                        # print(f"[DEBUG] parent_unknown 설정됨: {parent_candidate}")
+
+        # 형제자매 정보 초기화 (항상 정의되도록)
+        siblings = []
 
         # 2. "소설가 OO의 딸/아들" 패턴 처리 + 일본 작가 패턴 추가
         if not result['father'] or not result['mother']:
@@ -422,11 +522,24 @@ JSON 형식으로 응답:
                 r'([가-힣A-Za-z\s·\-]{2,15})\s*의\s+(차녀|장녀|차남|장남)',  # 일본식 표현
             ]
             
-            # 형제자매 관계는 제외하는 패턴들
+            # 형제자매 관계 패턴들
             sibling_patterns = [
-                r'([가-힣A-Za-z\s·\-ㅂ-ㅎㄱ-ㅎ]{2,15})\s*의\s+(동생|형|누나|언니|오빠|여동생|남동생)',
+                r'([가-힣A-Za-z\s·\-]{2,15})\s*의\s+(동생|형|누나|언니|오빠|여동생|남동생)',
                 r'([가-힣A-Za-z\s·\-]{2,15})(?:과|와)\s*([가-힣A-Za-z\s·\-]{2,15})\s*의\s+(딸|아들|차녀|장녀)'  # "A와 B의 딸" 형태만 허용
             ]
+            
+            # 형제자매 관계 정보 수집
+            for pattern in sibling_patterns:
+                matches = re.findall(pattern, content)
+                for match in matches:
+                    if len(match) >= 2:
+                        sibling_name = match[0].strip()
+                        relation = match[1] if len(match) > 1 else '형제자매'
+                        if len(sibling_name) >= 2 and len(sibling_name) <= 15:
+                            siblings.append({
+                                'name': sibling_name, 
+                                'relation': f'{relation} (성별 알 수 없음, 형제자매 관계)'
+                            })
             
             # 먼저 형제자매 관계인지 확인
             is_sibling_context = any(re.search(pattern, content) for pattern in sibling_patterns)
@@ -437,42 +550,88 @@ JSON 형식으로 응답:
             # 형제자매 키워드가 있으면 형제자매 관계로 간주
             is_sibling_context = is_sibling_context or sibling_direct
             
-            if not is_sibling_context:  # 형제자매가 아닌 경우만 부모로 간주
+            # "OO의 딸/아들" 패턴 처리 - 형제자매가 아닌 경우만
+            if not is_sibling_context:  # 형제자매가 아닌 경우만
+                # 우선순위가 높은 패턴부터 시도 (더 정확한 매칭을 위해)
+                matched_parent = None
+                
                 for pattern in child_patterns:
+                    if matched_parent:  # 이미 매칭된 경우 중단
+                        break
+                        
                     matches = re.findall(pattern, content)
                     for match in matches:
                         if len(match) == 2:  # (parent_name, relation) 형태
                             parent_name, relation = match
                             parent_name = parent_name.strip()
-                            parent_name = re.sub(r'^(소설가|작가|시인)\s*', '', parent_name).strip()
                             
-                            if len(parent_name) >= 2 and len(parent_name) <= 15:
-                                if not result['father']:
-                                    result['father'] = parent_name
-                                    result['family'].append({'relation': 'father', 'name': parent_name})
-                                elif not result['mother'] and parent_name != result['father']:
-                                    result['mother'] = parent_name
-                                    result['family'].append({'relation': 'mother', 'name': parent_name})
+                            # 이름 정리: 불필요한 접두사/접미사 제거
+                            parent_name = re.sub(r'^(소설가|작가|시인)\s*', '', parent_name).strip()
+                            parent_name = re.sub(r'^(에서|에게서|출신|태어난)\s*', '', parent_name).strip()
+                            
+                            # 유효한 이름인지 검증
+                            if (len(parent_name) >= 2 and len(parent_name) <= 15 and 
+                                not any(word in parent_name for word in ['에서', '에게서', '태어났다', '사이에서', '출생', '출신'])):
+                                
+                                # 모든 "A의 딸/아들" 패턴은 성별을 알 수 없는 부모로 처리
+                                result['family'].append({
+                                    'relation': 'parent_unknown', 
+                                    'name': parent_name, 
+                                    'detail': f'성별 알 수 없음 ({relation}의 부모)'
+                                })
+                                # print(f"[DEBUG] parent_unknown 처리: {parent_name} ({relation}의 부모)")
+                                matched_parent = parent_name
+                                break
 
-        # 3. 명시적 "아버지" 키워드 패턴 (이미 찾지 못한 경우만)
+        # 3. 명시적 "아버지" 키워드만 처리 (추측 금지)
         if not result['father']:
-            match_father = re.search(r'아버지[\s:은는이가]*\s*([가-힣A-Za-z·\-]{2,10})(?=\s|$|,|\.|와|과)', content)
-            if match_father:
-                name = match_father.group(1).strip()
-                # "생애" 같은 섹션 제목 제거
-                if name not in ['생애', '개요', '경력', '작품', '수상']:
-                    result['father'] = name
-                    result['family'].append({'relation': 'father', 'name': name})
+            # 더 엄격한 패턴 - "아버지는 이름" 또는 "아버지 이름" 형태만
+            father_patterns = [
+                r'아버지는\s+([가-힣A-Za-z·\-]{2,10})(?=\s|$|,|\.)',     # "아버지는 한승원"
+                r'아버지\s+([가-힣A-Za-z·\-]{2,10})(?=이다|였다|입니다|이었다)', # "아버지 한승원이다"
+                r'부친은\s+([가-힣A-Za-z·\-]{2,10})(?=\s|$|,|\.)',       # "부친은 한승원"
+                r'부친\s+([가-힣A-Za-z·\-]{2,10})(?=이다|였다|입니다|이었다)'   # "부친 한승원이다"
+            ]
+            
+            for pattern in father_patterns:
+                match_father = re.search(pattern, content)
+                if match_father:
+                    name = match_father.group(1).strip()
+                    # 잘못된 텍스트 필터링
+                    invalid_words = ['생애', '개요', '경력', '작품', '수상', '에서', '소설가', '작가', '시인']
+                    if not any(word in name for word in invalid_words) and len(name) >= 2:
+                        result['father'] = name
+                        result['family'].append({'relation': 'father', 'name': name})
+                        break
 
         # 4. 명시적 "어머니" 키워드 패턴 (이미 찾지 못한 경우만)
         if not result['mother']:
-            match_mother = re.search(r'어머니[\s:은는이가]*\s*([가-힣A-Za-z·\-]{2,10})(?=\s|$|,|\.|와|과)', content)
-            if match_mother:
-                name = match_mother.group(1).strip()
-                # "생애" 같은 섹션 제목 제거
-                if name not in ['생애', '개요', '경력', '작품', '수상']:
-                    result['mother'] = name
-                    result['family'].append({'relation': 'mother', 'name': name})
+            # 더 엄격한 패턴 - "어머니는 이름" 또는 "어머니 이름" 형태만 매칭
+            mother_patterns = [
+                r'어머니는\s+([가-힣A-Za-z·\-]{2,10})(?=\s|$|,|\.)',  # "어머니는 이름"
+                r'어머니\s+([가-힣A-Za-z·\-]{2,10})(?=이다|였다|입니다|이었다|님|씨)',  # "어머니 이름이다"
+                r'모친은\s+([가-힣A-Za-z·\-]{2,10})(?=\s|$|,|\.)',  # "모친은 이름"
+                r'모친\s+([가-힣A-Za-z·\-]{2,10})(?=이다|였다|입니다|이었다|님|씨)'   # "모친 이름이다"
+            ]
+            
+            for pattern in mother_patterns:
+                match_mother = re.search(pattern, content)
+                if match_mother:
+                    name = match_mother.group(1).strip()
+                    # print(f"[DEBUG] mother 패턴 매치: {pattern} -> {name}")
+                    # 잘못된 텍스트 필터링 강화
+                    invalid_words = ['생애', '개요', '경력', '작품', '수상', '에서', '소설가', '작가', '시인', '있다', '한다', '되다']
+                    if not any(word in name for word in invalid_words) and len(name) >= 2:
+                        result['mother'] = name
+                        result['family'].append({'relation': 'mother', 'name': name})
+                        # print(f"[DEBUG] mother 설정됨: {name}")
+                        break
+
+        # 형제자매 정보를 결과에 추가
+        if siblings:
+            result['siblings'] = siblings
+            for sibling in siblings:
+                result['family'].append({'relation': 'sibling', 'name': sibling['name'], 'detail': sibling['relation']})
 
         return result
     
@@ -495,9 +654,10 @@ JSON 형식으로 응답:
 }
 
 추출 규칙:
-- **부모만 추출하세요. 형제자매, 동생, 언니, 누나, 오빠는 부모가 아닙니다**
-- 부모, 아버지, 어머니, 부친, 모친 등의 키워드 활용
-- "OO의 딸", "OO의 아들", "OO의 장녀", "OO의 차녀", "OO의 장남", "OO의 차남" 등의 표현에서 OO가 부모인 경우만 추출
+- **명시적 성별 표현만 추출하세요. 추측하지 마세요!**
+- **"아버지 한승원", "어머니 김영희", "부친 박철수", "모친 이순자" 등 명확한 표현만 인정**
+- **"한승원의 딸", "김OO의 아들" 등은 성별을 알 수 없으므로 추출하지 마세요**
+- 형제자매, 동생, 언니, 누나, 오빠는 부모가 아닙니다
 - **"OO의 동생", "OO의 형", "OO의 누나", "OO의 언니", "OO의 오빠" 등은 절대 부모 관계가 아닙니다**
 - **문장 구조를 정확히 분석하세요: "A의 차녀이자 B의 동생"에서 A는 부모, B는 형제자매입니다**
 - 일본식 표현 "차녀", "장녀" 등도 고려하되, 부모-자식 관계만
@@ -505,18 +665,20 @@ JSON 형식으로 응답:
 - 정보가 없으면 found: false
 
 예시:
-- "요시모토 다카아키의 차녀" -> father: "요시모토 다카아키"
+- "아버지 한승원과 어머니 김영희" -> father: "한승원", mother: "김영희"
+- "부친은 박철수이다" -> father: "박철수", mother: null
+- "한승원의 딸" -> found: false (성별을 알 수 없으므로 추출 안함)
 - "하루노 요이코의 동생" -> found: false (형제자매 관계이므로 부모 아님)
-- "A의 차녀이자 B의 동생이다" -> father: "A", mother: null (B는 형제자매이므로 부모 아님)
 
-**실제 텍스트 예시:**
-텍스트: "요시모토 다카아키의 차녀이자 만화가인 하루노 요이코의 동생이다"
-→ 정답: father: "요시모토 다카아키", mother: null
-→ 이유: 하루노 요이코는 "동생" 관계이므로 형제자매입니다.
+**핵심 원칙:**
+- **성별이 명시되지 않은 이름은 절대 추출하지 마세요**
+- **"OO의 딸/아들" 패턴에서 OO의 성별을 추측하지 마세요**  
+- **"아버지", "어머니", "부친", "모친" 등 명시적 단어가 있을 때만 추출**
 
 **절대 하지 말아야 할 것:**
-- "하루노 요이코의 동생"에서 하루노 요이코를 어머니로 추출하면 안됩니다!
-- "동생" 관계는 형제자매 관계입니다!"""
+- "한승원의 딸"에서 한승원을 아버지로 추출 → ❌ (성별 불명)
+- "소설가 김OO의 아들"에서 김OO를 아버지로 추출 → ❌ (성별 불명)
+- "애인 야마자키 도미에"에서 야마자키 도미에를 어머니로 추출 → ❌ (애인은 가족이 아님)"""
 
             response = llm_client.chat.completions.create(
                 model="gpt-3.5-turbo",
