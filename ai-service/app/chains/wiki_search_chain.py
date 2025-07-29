@@ -67,43 +67,43 @@ class WikiSearchChain:
 
     def execute(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """메인 질의 처리 함수: clarification/context/fresh 검색 분기 명확화"""
-        print(f"[DEBUG] execute() 시작 - query: {query}")
-        print(f"[DEBUG] context: {context}")
+        # print(f"[DEBUG] execute() 시작 - query: {query}")
+        # print(f"[DEBUG] context: {context}")
         
         # 1. clarification(추가 정보 요청) 분기
         if context.get('waiting_for_clarification', False):
-            print("[DEBUG] clarification 분기")
+            # print("[DEBUG] clarification 분기")
             return self._handle_clarification_response(query, context)
         
         # 2. 복합 질문 처리 (최우선)
         compound_result = self._handle_compound_query(query, context)
         if compound_result:
-            print("[DEBUG] 복합 질문 처리")
+            # print("[DEBUG] 복합 질문 처리")
             return compound_result
         
         # 3. context 체크를 먼저 수행 (더 정교한 우선순위)
         context_check = self._check_context_priority(query, context)
-        print(f"[DEBUG] context_check: {context_check}")
+        # print(f"[DEBUG] context_check: {context_check}")
         if context_check['should_use_context']:
-            print("[DEBUG] context question 분기")
+            # print("[DEBUG] context question 분기")
             # 컨텍스트 질문을 위한 기본 의도 생성
             query_intent = WikiQueryIntent.create_context_question(query, InfoType.GENERAL).to_dict()
             return self._handle_context_question(query, query_intent, context)
             
         # 4. 질문에 작가명이 있으면 fresh 검색
         contains_author = self._contains_author_name(query)
-        print(f"[DEBUG] contains_author_name: {contains_author}")
+        # print(f"[DEBUG] contains_author_name: {contains_author}")
         if contains_author:
-            print("[DEBUG] fresh search (작가명 있음)")
+            # print("[DEBUG] fresh search (작가명 있음)")
             return self._fresh_search_flow(query, context)
             
         # 5. 나머지는 fresh 검색
-        print("[DEBUG] fresh search (기본)")
+        # print("[DEBUG] fresh search (기본)")
         return self._fresh_search_flow(query, context)
 
     def _fresh_search_flow(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """[수정됨] LLM intent 분석 결과를 기반으로 명확하게 워크플로우를 분기."""
-        print(f"[DEBUG] _fresh_search_flow() 시작 - query: {query}")
+        # print(f"[DEBUG] _fresh_search_flow() 시작 - query: {query}")
         
         # 관련 없는 질문 먼저 필터링
         if self._is_irrelevant_query(query):
@@ -131,7 +131,7 @@ class WikiSearchChain:
 
         elif intent_type == 'author_search':
             author_name = query_intent.get('keywords', [None])[0]
-            print(f"[DEBUG] author_search - author_name: {author_name}")
+            # print(f"[DEBUG] author_search - author_name: {author_name}")
             if author_name:
                 return self._handle_author_search_query(query, author_name, query_intent, context)
             else:
@@ -190,12 +190,12 @@ class WikiSearchChain:
 
         if self._is_author_result(search_result):
             specific_info_type = self._extract_specific_info_request(query)
-            print(f"[DEBUG] specific_info_type: {specific_info_type}")
+            # print(f"[DEBUG] specific_info_type: {specific_info_type}")
             
             if specific_info_type:
-                print(f"[DEBUG] 구체적 정보 추출 시작 - {specific_info_type}")
+                # print(f"[DEBUG] 구체적 정보 추출 시작 - {specific_info_type}")
                 response = self._extract_specific_answer(search_result, specific_info_type, final_author_name)
-                print(f"[DEBUG] 구체적 정보 추출 완료")
+                # print(f"[DEBUG] 구체적 정보 추출 완료")
                 return {
                     'action': 'show_result',
                     'message': response,
@@ -295,9 +295,9 @@ class WikiSearchChain:
 - book_title: 사용자가 말한 책 제목을 정확히 추출합니다.
 
 예시:
-- 사용자 답변: "책 제목이 개미야" -> {{"book_title": "개미", "author_name": null, "is_new_query": false}}
-- 사용자 답변: "베르나르 베르베르가 쓴 개미" -> {{"book_title": "개미", "author_name": "베르나르 베르베르", "is_new_query": false}}
-- 사용자 답변: "아니 그냥 김영하 작가 알려줘" -> {{"book_title": null, "author_name": "김영하", "is_new_query": true}}
+- 사용자 답변: "책 제목이 개미야" -> {{\"book_title\": \"개미\", \"author_name\": null, \"is_new_query\": false}}
+- 사용자 답변: "베르나르 베르베르가 쓴 개미" -> {{\"book_title\": \"개미\", \"author_name\": \"베르나르 베르베르\", \"is_new_query\": false}}
+- 사용자 답변: "아니 그냥 김영하 작가 알려줘" -> {{\"book_title\": null, \"author_name\": \"김영하\", \"is_new_query\": true}}
 """
         try:
             response = self.llm_client.chat.completions.create(
@@ -315,17 +315,17 @@ class WikiSearchChain:
 
     def _analyze_query_intent(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """쿼리 의도를 분석하여 적절한 처리 방식 결정 (LLM 기반)."""
-        print(f"[DEBUG] LLM client available: {self.llm_client is not None}")
+        # print(f"[DEBUG] LLM client available: {self.llm_client is not None}")
         if self.llm_client:
             try:
                 result = self._llm_analyze_intent(query, context)
-                print(f"[DEBUG] LLM analysis result: {result}")
+                # print(f"[DEBUG] LLM analysis result: {result}")
                 return result
             except Exception as e:
-                print(f"[DEBUG] LLM analysis failed: {e}")
+                # print(f"[DEBUG] LLM analysis failed: {e}")
                 return self._fallback_analyze_intent(query)
         else:
-            print("[DEBUG] Using fallback analysis")
+            # print("[DEBUG] Using fallback analysis")
             return self._fallback_analyze_intent(query)
     
     def _llm_analyze_intent(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
@@ -525,9 +525,9 @@ class WikiSearchChain:
         has_birth = any(keyword in query_lower for keyword in birth_keywords)
         has_death = any(keyword in query_lower for keyword in death_keywords)
         
-        print(f"[DEBUG] 질문: {query_lower}")
-        print(f"[DEBUG] family_keywords 체크: {[k for k in family_keywords if k in query_lower]}")
-        print(f"[DEBUG] mother_keywords 체크: {[k for k in mother_keywords if k in query_lower]}")
+        # print(f"[DEBUG] 질문: {query_lower}")
+        # print(f"[DEBUG] family_keywords 체크: {[k for k in family_keywords if k in query_lower]}")
+        # print(f"[DEBUG] mother_keywords 체크: {[k for k in mother_keywords if k in query_lower]}")
         
         if has_birth and has_death:
             specific_request = 'birth_death'
@@ -537,12 +537,12 @@ class WikiSearchChain:
             specific_request = 'father'
         elif any(keyword in query_lower for keyword in mother_keywords):
             specific_request = 'mother'
-            print(f"[DEBUG] mother로 분류됨")
+            # print(f"[DEBUG] mother로 분류됨")
         elif any(keyword in query_lower for keyword in spouse_keywords):
             specific_request = 'spouse'
         elif any(keyword in query_lower for keyword in family_keywords):
             specific_request = 'family'
-            print(f"[DEBUG] family로 분류됨")
+            # print(f"[DEBUG] family로 분류됨")
         elif has_birth:
             specific_request = 'birth'
         elif has_death:
@@ -830,7 +830,7 @@ class WikiSearchChain:
         elif info_type == 'family':
             try:
                 family_info = WikiInformationExtractor.find_enhanced_family_info(content, self.llm_client)
-                print(f"[DEBUG] family_info 결과: {family_info}")
+                # print(f"[DEBUG] family_info 결과: {family_info}")
                 result_parts = []
                 has_family_info = False
                 if family_info:
@@ -859,16 +859,16 @@ class WikiSearchChain:
                             family_member['name'] not in known_parents):
                             result_parts.append(f"부모: {family_member['name']} (성별 불명)")
                     
-                    print(f"[DEBUG] result_parts: {result_parts}")
+                    # print(f"[DEBUG] result_parts: {result_parts}")
                 
                 if result_parts:
-                    print(f"[DEBUG] 구체적 정보 추출 완료")
+                    # print(f"[DEBUG] 구체적 정보 추출 완료")
                     return f"{title}의 가족 정보:\n" + "\n".join(result_parts) + f"\n\n**상세 정보**: {url}"
                 else:
                     return f"{title}의 가족 정보를 찾을 수 없습니다.\n\n**상세 정보**: {url}"
                     
             except Exception as e:
-                print(f"[DEBUG] family 정보 추출 에러: {e}")
+                # print(f"[DEBUG] family 정보 추출 에러: {e}")
                 import traceback
                 traceback.print_exc()
                 return f"{title}의 가족 정보를 찾을 수 없습니다.\n\n**상세 정보**: {url}"
@@ -1215,7 +1215,7 @@ class WikiSearchChain:
 
     def _contains_author_info(self, search_result: Dict[str, Any]) -> bool:
         """검색 결과에 작가 정보가 포함되어 있는지 확인."""
-        content = search_result.get('content', '') + search_result.get('summary', '')
+        content = search_result.get('content', '') + ' ' + search_result.get('summary', '')
         
         author_indicators = [
             '작가', '저자', '소설가', '시인', '문학가', '작품', '쓴', '지은', 

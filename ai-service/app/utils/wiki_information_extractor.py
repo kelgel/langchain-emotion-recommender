@@ -370,9 +370,9 @@ JSON 형식으로 응답:
         # LLM으로 보완 처리 (정규식에서 못찾은 부분만)
         if llm_client:
             try:
-                print(f"[DEBUG] LLM으로 가족 정보 추출 시도")
+                # print(f"[DEBUG] LLM으로 가족 정보 추출 시도")
                 llm_result = WikiInformationExtractor._llm_find_family_info(content, llm_client)
-                print(f"[DEBUG] LLM 결과: {llm_result}")
+                # print(f"[DEBUG] LLM 결과: {llm_result}")
                 
                 # 정규식 결과와 LLM 결과 병합 (LLM이 더 정확한 경우 우선)
                 # LLM이 아버지를 찾았으면 정규식 결과를 덮어쓰기
@@ -392,7 +392,7 @@ JSON 형식으로 응답:
                     regex_result['family'].append({'relation': 'mother', 'name': llm_result['mother']})
                     
             except Exception as e:
-                print(f"[DEBUG] LLM 에러: {e}")
+                # print(f"[DEBUG] LLM 에러: {e}")
                 pass
         
         # 정규식 결과가 있으면 반환
@@ -441,8 +441,8 @@ JSON 형식으로 응답:
         """정규식 기반 가족 정보 추출"""
         import re
 
-        print(f"[DEBUG] content 길이: {len(content)}")
-        print(f"[DEBUG] content 첫 500자: {content[:500]}")
+        # print(f"[DEBUG] content 길이: {len(content)}")
+        # print(f"[DEBUG] content 첫 500자: {content[:500]}")
 
         result = {
             'father': None,
@@ -465,12 +465,12 @@ JSON 형식으로 응답:
         for pattern in birth_patterns:
             birth_pattern = re.search(pattern, content)
             if birth_pattern:
-                print(f"[DEBUG] 매치된 패턴: {pattern}")
+                # print(f"[DEBUG] 매치된 패턴: {pattern}")
                 break
         if birth_pattern:
             parent1_candidate = birth_pattern.group(1).strip()
             parent2_candidate = birth_pattern.group(2).strip()
-            print(f"[DEBUG] birth_pattern 매치됨 - parent1: {parent1_candidate}, parent2: {parent2_candidate}")
+            # print(f"[DEBUG] birth_pattern 매치됨 - parent1: {parent1_candidate}, parent2: {parent2_candidate}")
             
             # 이름 정리: 괄호 제거, 직업 수식어 제거
             def clean_name(name):
@@ -482,7 +482,7 @@ JSON 형식으로 응답:
             
             parent1_candidate = clean_name(parent1_candidate)
             parent2_candidate = clean_name(parent2_candidate)
-            print(f"[DEBUG] 정리된 이름 - parent1: {parent1_candidate}, parent2: {parent2_candidate}")
+            # print(f"[DEBUG] 정리된 이름 - parent1: {parent1_candidate}, parent2: {parent2_candidate}")
             
             # 명시적으로 "아버지"/"어머니"가 언급된 경우만 성별 구분, 나머지는 parent_unknown으로 처리
             if "아버지" in birth_pattern.group(0) and "어머니" in birth_pattern.group(0):
@@ -491,14 +491,14 @@ JSON 형식으로 응답:
                     not any(word in parent1_candidate for word in ['어머니', '사이에서', '태어났다', '에서', '와'])):
                     result['father'] = parent1_candidate
                     result['family'].append({'relation': 'father', 'name': parent1_candidate})
-                    print(f"[DEBUG] father 설정됨: {parent1_candidate}")
+                    # print(f"[DEBUG] father 설정됨: {parent1_candidate}")
                 
                 # 어머니 후보 검증  
                 if (len(parent2_candidate) <= 30 and len(parent2_candidate) >= 2 and
                     not any(word in parent2_candidate for word in ['아버지', '사이에서', '태어났다', '에서', '와'])):
                     result['mother'] = parent2_candidate
                     result['family'].append({'relation': 'mother', 'name': parent2_candidate})
-                    print(f"[DEBUG] mother 설정됨: {parent2_candidate}")
+                    # print(f"[DEBUG] mother 설정됨: {parent2_candidate}")
             else:
                 # 성별을 알 수 없는 경우 - 두 명 모두 parent_unknown으로 처리
                 for i, parent_candidate in enumerate([parent1_candidate, parent2_candidate], 1):
@@ -509,7 +509,7 @@ JSON 형식으로 응답:
                             'name': parent_candidate, 
                             'detail': '성별 알 수 없음 (부모)'
                         })
-                        print(f"[DEBUG] parent_unknown 설정됨: {parent_candidate}")
+                        # print(f"[DEBUG] parent_unknown 설정됨: {parent_candidate}")
 
         # 형제자매 정보 초기화 (항상 정의되도록)
         siblings = []
@@ -579,7 +579,7 @@ JSON 형식으로 응답:
                                     'name': parent_name, 
                                     'detail': f'성별 알 수 없음 ({relation}의 부모)'
                                 })
-                                print(f"[DEBUG] parent_unknown 처리: {parent_name} ({relation}의 부모)")
+                                # print(f"[DEBUG] parent_unknown 처리: {parent_name} ({relation}의 부모)")
                                 matched_parent = parent_name
                                 break
 
@@ -618,13 +618,13 @@ JSON 형식으로 응답:
                 match_mother = re.search(pattern, content)
                 if match_mother:
                     name = match_mother.group(1).strip()
-                    print(f"[DEBUG] mother 패턴 매치: {pattern} -> {name}")
+                    # print(f"[DEBUG] mother 패턴 매치: {pattern} -> {name}")
                     # 잘못된 텍스트 필터링 강화
                     invalid_words = ['생애', '개요', '경력', '작품', '수상', '에서', '소설가', '작가', '시인', '있다', '한다', '되다']
                     if not any(word in name for word in invalid_words) and len(name) >= 2:
                         result['mother'] = name
                         result['family'].append({'relation': 'mother', 'name': name})
-                        print(f"[DEBUG] mother 설정됨: {name}")
+                        # print(f"[DEBUG] mother 설정됨: {name}")
                         break
 
         # 형제자매 정보를 결과에 추가
