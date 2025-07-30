@@ -13,6 +13,35 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# FastAPI 연결용
+def run_main_agent(user_input: str):
+    query = query_analysis_chain.invoke({"user_input": user_input})
+    intent = intent_classify_chain.invoke({"user_input": user_input})
+
+    print("user_input", user_input)
+    print("query", query)
+
+    if needs_clarification(intent, query):
+        prompt = get_clarification_prompt(intent).format(**query)
+        llm_response = clarification_llm.invoke(prompt)
+        return {
+            "clarification_needed": True,
+            "message": llm_response.content,
+            "query": query,
+            "intent": intent,
+        }
+
+    query["user_input"] = user_input
+    response = route_intent(intent, query)
+    return {
+        "clarification_needed": False,
+        "response": response,
+        "query": query,
+        "intent": intent,
+    }
+
+
+#콘솔 테스트용
 def run_pipeline():
     while True:
         user_input = input("💬 사용자 질문: ")
@@ -40,6 +69,7 @@ def run_pipeline():
             print(f"📌 재분석 결과: {query}")
 
         # 4. 최종 intent 처리
+        query["user_input"] = user_input
         response = route_intent(intent, query)
         print(f"\n🤖 챗봇 응답:\n{response}")
         break

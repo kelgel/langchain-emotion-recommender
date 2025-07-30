@@ -7,11 +7,16 @@ import sys
 import os
 
 # 경로 설정
+# current_dir = os.path.dirname(os.path.abspath(__file__))
+# agents_dir = os.path.join(current_dir, 'app', 'agents')
+# sys.path.insert(0, agents_dir)
+#
+# from wiki_search_agent import WikiSearchAgent
 current_dir = os.path.dirname(os.path.abspath(__file__))
-agents_dir = os.path.join(current_dir, 'app', 'agents')
-sys.path.insert(0, agents_dir)
+sys.path.insert(0, os.path.join(current_dir, "app"))
 
-from wiki_search_agent import WikiSearchAgent
+# ✨ main_agent import
+from main_agent.main_agent import run_main_agent
 
 load_dotenv()
 
@@ -26,7 +31,7 @@ app.add_middleware(
 )
 
 # WikiSearchAgent 초기화
-wiki_agent = WikiSearchAgent()
+#wiki_agent = WikiSearchAgent()
 
 class ChatRequest(BaseModel):
     message: str
@@ -43,13 +48,24 @@ async def health():
 async def chat(request: ChatRequest):
     try:
         # WikiSearchAgent를 통해 처리
-        result = wiki_agent.process(request.message)
-        
-        if result.get('success', True):
-            return {"response": result.get('message', ''), "success": True}
-        else:
-            return {"response": result.get('message', '오류가 발생했습니다.'), "success": False}
-            
+        # result = wiki_agent.process(request.message)
+        result = run_main_agent(request.message)
+
+        # ✅ 수정: 'response' 키에서 가져오기
+        return {
+            "response": result.get("response", ""),  # ← 이게 실제 message
+            "success": True,
+            "clarification_needed": result.get("clarification_needed", False),
+            "query": result.get("query", {}),
+            "intent": result.get("intent", "")
+        }
+
+        # 우선 출력 형태를 맞추기 위해서 조건문은 주석처리
+        # if result.get('success', True):
+        #     return {"response": result.get('message', ''), "success": True}
+        # else:
+        #     return {"response": result.get('message', '오류가 발생했습니다.'), "success": False}
+        #
     except Exception as e:
         return {"response": f"AI 서비스 연결에 실패했습니다: {str(e)}", "success": False}
 
