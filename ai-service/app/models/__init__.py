@@ -6,14 +6,11 @@
 데이터 모델들을 관리하는 패키지
 """
 
-from .wiki_conversation_state import WikiConversationState, ConversationMessage
 from .wiki_query_intent import WikiQueryIntent, IntentType, InfoType
 from .wiki_search_result import WikiSearchResult
 from .wiki_agent_response import WikiAgentResponse, ActionType
 
 __all__ = [
-    'WikiConversationState',
-    'ConversationMessage',
     'WikiQueryIntent',
     'IntentType',
     'InfoType',
