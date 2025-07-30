@@ -20,7 +20,8 @@ document.addEventListener('DOMContentLoaded', function() {
         chatbotClose: document.getElementById('chatbotClose'),
         chatbotInput: document.getElementById('chatbotInput'),
         chatbotSend: document.getElementById('chatbotSend'),
-        chatbotMessages: document.getElementById('chatbotMessages')
+        chatbotMessages: document.getElementById('chatbotMessages'),
+        chatbotNewChat: document.getElementById('chatbotNewChat')
     };
 
     // 카테고리 토글 이벤트 리스너 추가 (교보문고 스타일)
@@ -785,13 +786,55 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
+
+        // 새 대화 시작 버튼 이벤트
+        if (elements.chatbotNewChat) {
+            elements.chatbotNewChat.addEventListener('click', startNewChat);
+        }
+        
+        // 새 대화 시작 함수
+        function startNewChat() {
+            if (confirm('대화 기록을 모두 지우고 새 대화를 시작할까요?')) {
+                console.log('새 대화 시작...');
+                
+                // 로컬 스토리지에서 현재 세션 기록 삭제
+                if (sessionId) {
+                    localStorage.removeItem(`chat_history_${sessionId}`);
+                }
+                // 세션 ID 자체도 삭제
+                localStorage.removeItem('ai_session_id');
+                
+                // 내부 변수 초기화
+                sessionId = null;
+                
+                // 화면의 메시지 초기화
+                elements.chatbotMessages.innerHTML = `
+                    <div class="bot-message">안녕하세요! 책크인 AI 서비스입니다.<br>어떤 서비스를 찾고 계신가요?
+                        <div class="message-suggestions">
+                            <button class="suggestion-btn" data-text="한강 정보 알려줘">🕵️ 위키서비스</button>
+                            <button class="suggestion-btn" data-text="스트레스 해소할 수 있는 책 추천해줘">😌 힐링 도서</button>
+                            <button class="suggestion-btn" data-text="자기계발서 추천해줘">💪 자기계발</button>
+                        </div>
+                    </div>
+                `;
+                
+                console.log('대화 기록 및 세션이 초기화되었습니다.');
+            }
+        }
         
         // 메시지 전송 함수
         async function sendMessage() {
             const message = elements.chatbotInput.value.trim();
             if (!message) return;
+
+            // ★ FIX: 세션 ID를 메시지 추가 전에 확인 및 생성
+            if (!sessionId) {
+                sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('ai_session_id', sessionId);
+                console.log('새 세션 ID 생성:', sessionId);
+            }
             
-            // 사용자 메시지 추가
+            // 사용자 메시지 추가 (이제 sessionId가 항상 존재)
             addMessage(message, 'user');
             
             // 입력창 비우기
@@ -801,22 +844,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const loadingDiv = addLoadingMessage();
             
             try {
-                // 세션 ID 확인 및 생성
-                if (!sessionId) {
-                    sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-                    localStorage.setItem('ai_session_id', sessionId);
-                    console.log('새 세션 ID 생성:', sessionId);
-                }
-                
-                console.log('전송 전 세션 ID:', sessionId);
-                
                 // 실제 AI 채팅 API 호출
                 const headers = {
                     'Content-Type': 'application/json',
                     'X-Session-ID': sessionId
                 };
-                
-                console.log('전송 헤더:', headers);
                 
                 const response = await fetch('http://localhost:8000/api/chat', {
                     method: 'POST',
@@ -825,31 +857,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 const data = await response.json();
-                console.log('응답 데이터:', data);
-                
-                // 세션 ID 업데이트 (서버에서 새로 할당한 경우)
-                if (data.session_id && data.session_id !== sessionId) {
-                    sessionId = data.session_id;
-                    localStorage.setItem('ai_session_id', sessionId);
-                    console.log('서버에서 세션 ID 업데이트:', sessionId);
-                }
                 
                 // 로딩 메시지 제거
                 loadingDiv.remove();
                 
                 if (data.response) {
                     addMessage(data.response, 'bot');
-
-                    // "종료" 인텐트 처리
-                    if (data.intent === 'exit') {
-                        setTimeout(() => {
-                            elements.chatbotMessages.innerHTML = ''; // 메시지 창 비우기
-                            addMessage('대화가 종료되었습니다. 새로운 대화를 시작하세요.', 'bot');
-                            localStorage.removeItem(`chat_history_${sessionId}`); // 로컬 스토리지 기록 삭제
-                            sessionId = null; // 세션 ID 초기화
-                            localStorage.removeItem('ai_session_id');
-                        }, 1500);
-                    }
                 } else {
                     addMessage(data.error || 'AI 서비스에서 오류가 발생했습니다.', 'bot');
                 }
@@ -869,15 +882,17 @@ document.addEventListener('DOMContentLoaded', function() {
             if (chatHistory) {
                 try {
                     const messages = JSON.parse(chatHistory);
-                    
-                    // 기존 메시지 제거 (환영 메시지 제외하고)
-                    const existingMessages = elements.chatbotMessages.querySelectorAll('.user-message, .bot-message:not(:first-child)');
-                    existingMessages.forEach(msg => msg.remove());
-                    
-                    // 저장된 메시지들 복원
-                    messages.forEach(message => {
-                        addMessage(message.text, message.type, false); // 저장하지 않고 추가
-                    });
+            
+            // 기존 메시지 제거 (환영 메시지 제외)
+            const messagesContainer = elements.chatbotMessages;
+            while (messagesContainer.children.length > 1) {
+                messagesContainer.removeChild(messagesContainer.lastChild);
+            }
+            
+            // 저장된 메시지들 복원
+            messages.forEach(message => {
+                addMessage(message.text, message.type, false); // 저장하지 않고 추가
+            });
                     
                     console.log(`${messages.length}개의 이전 메시지를 복원했습니다.`);
                 } catch (error) {
@@ -951,7 +966,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             return loadingDiv;
         }
-        
+
         console.log('챗봇 초기화 완료');
     }
 });
