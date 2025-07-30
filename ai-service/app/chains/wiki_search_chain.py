@@ -130,7 +130,8 @@ class WikiSearchChain:
                 }
 
         elif intent_type == 'author_search':
-            author_name = query_intent.get('keywords', [None])[0]
+            keywords = query_intent.get('keywords', [])
+            author_name = keywords[0] if keywords else None
             # print(f"[DEBUG] author_search - author_name: {author_name}")
             if author_name:
                 return self._handle_author_search_query(query, author_name, query_intent, context)
@@ -173,10 +174,20 @@ class WikiSearchChain:
         
         if not search_result:
             temp_result = self.tool.search_page(author_name)
-            if temp_result['success'] and self._is_author_result(temp_result):
-                 if self._is_title_similar(author_name, temp_result.get('title', '')):
-                    search_result = temp_result
-                    final_author_name = temp_result.get('title', '').split('(')[0].strip()
+            if temp_result['success']:
+                if self._is_author_result(temp_result):
+                    if self._is_title_similar(author_name, temp_result.get('title', '')):
+                        search_result = temp_result
+                        final_author_name = temp_result.get('title', '').split('(')[0].strip()
+                elif '다음 사람을 가리킨다' in temp_result.get('summary', ''):
+                    return {
+                        'action': 'ask_clarification',
+                        'message': f"'{author_name}'에 대한 여러 인물이 있습니다. 찾으시는 분의 직업이나 대표작을 알려주시겠어요?",
+                        'update_context': {
+                            'waiting_for_clarification': True,
+                            'current_author': author_name
+                        }
+                    }
 
         if not search_result:
             return {
@@ -410,7 +421,7 @@ class WikiSearchChain:
                 prompt += "최근 대화 내용:\n"
                 for item in recent_history:
                     role = "사용자" if item['role'] == 'user' else "AI"
-                    prompt += f"- {role}: {item['message'][:80]}...\n"
+                    prompt += f"- {role}: {item['content'][:80]}...\n"
         
         return prompt
 
@@ -478,95 +489,39 @@ class WikiSearchChain:
         return False
 
     def _handle_context_question(self, query: str, query_intent: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
-        """[재설계 4.0] 맥락 기반 질문 처리. 규칙 기반 키워드 매칭 우선 적용."""
+        """[재설계 5.0] 맥락 기반 질문 처리. 안정성 강화 및 컨텍스트 누락 대응."""
         
+        # 0. 관련 없는 질문 필터링
         if self._is_irrelevant_query(query):
             return {
                 'action': 'error',
-                'message': "죄송합니다. 도서, 작가, 출판사에 대한 질문만 답변드릴 수 있습니다. 다른 질문을 해주세요.",
-                'update_context': {}
+                'message': "죄송합니다. 도서, 작가, 출판사에 대한 질문만 답변드릴 수 있습니다.",
+                'update_context': context
             }
         
+        # 1. 컨텍스트에서 정보 추출 (필수)
         author_name = context.get('current_author')
         last_search_result = context.get('last_search_result')
 
+        # 2. 컨텍스트 누락 시, 새로운 검색 시도
         if not author_name or not last_search_result:
-            return {
-                'action': 'error',
-                'message': self.prompt.get_ambiguous_query_message(),
-                'update_context': {}
-            }
+            # 컨텍스트가 없으면, 이 질문을 새로운 검색으로 처리
+            return self._fresh_search_flow(query, context)
 
-        is_work_context = self._is_work_context(last_search_result)
-        
-        if is_work_context and self._is_author_info_question(query):
-            author_from_work = self._extract_author_from_work_page(last_search_result)
-            if author_from_work:
-                author_search_result = self.tool.search_page(f"{author_from_work} (작가)")
-                if author_search_result['success'] and self._is_author_result(author_search_result):
-                    return self._handle_context_question(query, query_intent, {
-                        'current_author': author_from_work,
-                        'last_search_result': author_search_result,
-                        'waiting_for_clarification': False
-                    })
-        
+        # 3. 구체적인 정보 요청 키워드 매칭
         query_lower = query.lower()
-        specific_request = None
-        
-        author_keywords = ['저자', '작가', '쓴 사람', '누가 썼', '지은이']
-        father_keywords = ['아버지', '부친']
-        mother_keywords = ['어머니', '모친']
-        spouse_keywords = ['아내', '남편', '배우자', '부인', '처', '주인']
-        family_keywords = ['가족', '부모', '형제', '자매', '형제자매', '가족 정보', '의 가족']
-        birth_keywords = ['출생', '태어', '나이', '출생일', '언제 태어']
-        death_keywords = ['사망', '죽었', '별세', '사망일', '언제 죽']
-        works_keywords = ['작품', '대표작', '책들']
+        specific_request = self._extract_specific_info_request(query_lower)
 
-        has_birth = any(keyword in query_lower for keyword in birth_keywords)
-        has_death = any(keyword in query_lower for keyword in death_keywords)
-        
-        # print(f"[DEBUG] 질문: {query_lower}")
-        # print(f"[DEBUG] family_keywords 체크: {[k for k in family_keywords if k in query_lower]}")
-        # print(f"[DEBUG] mother_keywords 체크: {[k for k in mother_keywords if k in query_lower]}")
-        
-        if has_birth and has_death:
-            specific_request = 'birth_death'
-        elif any(keyword in query_lower for keyword in author_keywords):
-            specific_request = 'author'
-        elif any(keyword in query_lower for keyword in father_keywords):
-            specific_request = 'father'
-        elif any(keyword in query_lower for keyword in mother_keywords):
-            specific_request = 'mother'
-            # print(f"[DEBUG] mother로 분류됨")
-        elif any(keyword in query_lower for keyword in spouse_keywords):
-            specific_request = 'spouse'
-        elif any(keyword in query_lower for keyword in family_keywords):
-            specific_request = 'family'
-            # print(f"[DEBUG] family로 분류됨")
-        elif has_birth:
-            specific_request = 'birth'
-        elif has_death:
-            specific_request = 'death'
-        elif any(keyword in query_lower for keyword in works_keywords):
-            specific_request = 'works'
-
+        # 4. 매칭된 키워드가 있으면, 정보 추출 시도
         if specific_request:
-            if specific_request == 'author':
-                book_title = last_search_result.get('title', '해당 작품').split('(')[0].strip()
-                true_author = self._extract_author_with_llm(last_search_result)
-                if true_author and true_author.lower() != 'none':
-                    message = f"'{book_title}'의 저자는 {true_author}입니다."
-                else:
-                    message = f"'{book_title}'의 저자는 {author_name}입니다."
-            else:
-                message = self._extract_specific_answer(last_search_result, specific_request, author_name)
-            
+            message = self._extract_specific_answer(last_search_result, specific_request, author_name)
             return {
                 'action': 'show_result',
                 'message': message,
-                'update_context': context
+                'update_context': context  # 컨텍스트 유지
             }
 
+        # 5. 구체적인 키워드가 없으면, LLM을 통해 일반적인 답변 생성
         llm_answer = self._generate_llm_answer(
             query, 
             last_search_result, 
@@ -645,7 +600,10 @@ class WikiSearchChain:
         content = search_result.get('content', '').lower()
         title = search_result.get('title', '').lower()
         
-        first_sentence = summary.split('.')[0].split('\n')[0]
+        if '다음 사람을 가리킨다' in summary:
+            return False
+
+        first_sentence = summary.split('.')[0]
         primary_occupations = ['소설가', '작가', '시인', '만화가', '극작가', '저술가']
         if any(job in first_sentence for job in primary_occupations):
             return True

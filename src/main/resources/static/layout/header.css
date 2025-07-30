@@ -898,9 +898,9 @@
 .chatbot-header {
     background: #000000;
     color: white;
-    padding: 10px;
+    padding: 10px 15px; /* 패딩 조정 */
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start; /* 왼쪽 정렬 */
     align-items: center;
     border-radius: 18px 18px 0 0;
 }
@@ -911,7 +911,22 @@
     font-weight: 600;
 }
 
+/* 리셋 버튼 */
+.chatbot-new-chat {
+    background: #ffffff;
+    border: 1px solid #000000;
+    color: #000000;
+    border-radius: 12px;
+    padding: 2px 8px;
+    margin-left: 10px; /* 제목과의 간격 */
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
 .chatbot-close {
+    margin-left: auto; /* 닫기 버튼을 오른쪽 끝으로 밀어냄 */
     background: none;
     border: none;
     color: white;

@@ -8,12 +8,6 @@ echo ====================================
 REM 프로젝트 루트로 이동 (scripts 폴더에서 1단계 위로)
 cd /d "%~dp0.."
 
-echo 📥 Git 최신 변경사항 가져오기...
-git pull origin main
-if errorlevel 1 (
-    echo ⚠️  Git pull 실패했지만 계속 진행합니다...
-)
-
 echo.
 echo 업데이트 방식을 선택하세요:
 echo 1^) 빠른 재시작 ^(컨테이너만 재시작^)
