@@ -30,7 +30,6 @@ for module_name in mock_modules:
 # 테스트 대상 import
 from app.chains.wiki_search_chain import WikiSearchChain
 
-
 class TestWikiSearchChainBasics:
     """WikiSearchChain 기본 워크플로우 테스트"""
 
@@ -375,6 +374,337 @@ class TestWikiSearchChainIntentAnalysis:
             print(f"         ✅ 테스트 {i} 통과")
 
         print("✅ 관련 없는 질문 판별 테스트 통과")
+
+class TestWikiSearchChainSearchHandlers:
+    """WikiSearchChain 검색 핸들러 테스트"""
+
+    def setup_method(self):
+        """각 테스트 전에 실행되는 설정"""
+        self.mock_llm_client = Mock()
+        self.chain = WikiSearchChain(llm_client=self.mock_llm_client)
+        self.chain.tool = Mock()
+        self.chain.prompt = Mock()
+
+    def test_handle_author_search_query_success(self):
+        """작가 검색 쿼리 처리 성공 테스트"""
+        query = "김영하 작가에 대해 알려줘"
+        author_name = "김영하"
+        query_intent = {'type': 'author_search', 'keywords': ['김영하']}
+        context = {}
+
+        print(f"  👤 작가 검색 쿼리 처리 테스트")
+        print(f"  📝 쿼리: '{query}'")
+        print(f"  🎯 작가명: '{author_name}'")
+
+        # 성공적인 검색 결과 모킹
+        self.chain.tool.search_page.return_value = {
+            'success': True,
+            'title': '김영하 (작가)',
+            'summary': '김영하는 대한민국의 소설가이다.',
+            'content': '김영하는 1968년 경기도에서 태어났다.',
+            'url': 'https://ko.wikipedia.org/wiki/김영하_(작가)'
+        }
+
+        # LLM 답변 생성 모킹
+        self.mock_llm_client.chat.completions.create.return_value = Mock(
+            choices=[Mock(message=Mock(content="김영하는 1968년에 태어난 대한민국의 소설가입니다."))]
+        )
+
+        result = self.chain._handle_author_search_query(query, author_name, query_intent, context)
+
+        print(f"  📊 처리 결과:")
+        print(f"    - 액션: {result.get('action')}")
+        print(f"    - 메시지 존재: {bool(result.get('message'))}")
+        print(f"    - 작가명 설정: {result.get('update_context', {}).get('current_author')}")
+        print(f"  ✅ 검색 도구 호출: {self.chain.tool.search_page.called}")
+
+        assert result.get('action') == 'show_result'
+        assert result.get('message')
+        assert result.get('update_context', {}).get('current_author') == '김영하'
+
+        print("✅ 작가 검색 쿼리 처리 성공 테스트 통과")
+
+    def test_handle_author_search_query_disambiguation(self):
+        """작가 검색 - 동명이인 처리 테스트"""
+        query = "한강 작가"
+        author_name = "한강"
+        query_intent = {'type': 'author_search', 'keywords': ['한강']}
+        context = {}
+
+        print(f"  🔍 동명이인 처리 테스트")
+        print(f"  📝 쿼리: '{query}'")
+        print(f"  🎯 상황: 동명이인 존재")
+
+        # 동명이인 페이지 모킹
+        self.chain.tool.search_page.return_value = {
+            'success': True,
+            'title': '한강',
+            'summary': '한강은 다음 사람을 가리킨다.',
+            'content': '한강 (강), 한강 (작가)',
+            'url': 'https://ko.wikipedia.org/wiki/한강'
+        }
+
+        self.chain.prompt.get_search_failure_message.return_value = "한강에 대한 여러 정보가 있습니다."
+
+        result = self.chain._handle_author_search_query(query, author_name, query_intent, context)
+
+        print(f"  📊 처리 결과:")
+        print(f"    - 액션: {result.get('action')}")
+        print(f"    - 명확화 요청: {result.get('action') == 'ask_clarification'}")
+        print(f"    - 대기 상태 설정: {result.get('update_context', {}).get('waiting_for_clarification')}")
+
+        assert result.get('action') == 'ask_clarification'
+        assert result.get('update_context', {}).get('waiting_for_clarification') == True
+        assert result.get('update_context', {}).get('current_author') == author_name
+
+        print("✅ 동명이인 처리 테스트 통과")
+
+    def test_handle_book_to_author_query_success(self):
+        """책→작가 쿼리 처리 성공 테스트"""
+        book_title = "개미"
+        query_intent = {'type': 'book_to_author', 'book_title': '개미'}
+        context = {}
+
+        print(f"  📖 책→작가 쿼리 처리 테스트")
+        print(f"  📝 책 제목: '{book_title}'")
+        print(f"  🎯 예상: 작가 정보 추출")
+
+        # 책 검색 결과 모킹
+        self.chain.tool.search_page.return_value = {
+            'success': True,
+            'title': '개미 (소설)',
+            'summary': '개미는 베르나르 베르베르의 소설이다.',
+            'content': '이 소설은 베르나르 베르베르가 1991년에 발표했다.',
+            'url': 'https://ko.wikipedia.org/wiki/개미_(소설)'
+        }
+
+        # LLM 작가 추출 모킹
+        self.mock_llm_client.chat.completions.create.return_value = Mock(
+            choices=[Mock(message=Mock(content="베르나르 베르베르"))]
+        )
+
+        result = self.chain._handle_book_to_author_query(book_title, query_intent, context)
+
+        print(f"  📊 처리 결과:")
+        print(f"    - 액션: {result.get('action')}")
+        print(f"    - 메시지 포함 '베르베르': {'베르베르' in result.get('message', '')}")
+        print(f"    - 작가명 추출: {result.get('update_context', {}).get('current_author')}")
+
+        assert result.get('action') == 'show_result'
+        assert '베르베르' in result.get('message', '') or '개미' in result.get('message', '')
+
+        print("✅ 책→작가 쿼리 처리 성공 테스트 통과")
+
+
+class TestWikiSearchChainInformationExtraction:
+    """WikiSearchChain 정보 추출 테스트"""
+
+    def setup_method(self):
+        """각 테스트 전에 실행되는 설정"""
+        self.mock_llm_client = Mock()
+        self.chain = WikiSearchChain(llm_client=self.mock_llm_client)
+
+        # 샘플 검색 결과
+        self.sample_search_result = {
+            'success': True,
+            'title': '한강 (작가)',
+            'summary': '한강은 대한민국의 소설가이다.',
+            'content': '''한강은 1970년 11월 27일 광주광역시에서 태어났다. 
+                         연세대학교 국어국문학과를 졸업했다. 
+                         아버지는 소설가 한승원이다.
+                         대표작으로는 채식주의자, 소년이 온다 등이 있다.
+                         2016년 맨부커상을 수상했다.''',
+            'url': 'https://ko.wikipedia.org/wiki/한강_(작가)'
+        }
+
+    def test_extract_specific_info_request_university(self):
+        """특정 정보 요청 추출 - 대학교 테스트"""
+        test_cases = [
+            ("한강 대학교 어디야", "university"),
+            ("그 작가 어디 대학 나왔어", "university"),
+            ("학교 정보 알려줘", "university"),
+            ("출신 대학 어디", "university"),
+        ]
+
+        print(f"  🎓 대학교 정보 요청 추출 테스트")
+        print(f"  📋 테스트 케이스: {len(test_cases)}개")
+
+        for i, (query, expected) in enumerate(test_cases, 1):
+            print(f"    {i}. 쿼리: '{query}'")
+
+            result = self.chain._extract_specific_info_request(query)
+
+            print(f"       📊 추출 결과: '{result}'")
+            print(f"       ✅ 정확성: {result == expected}")
+
+            assert result == expected
+            print(f"       ✅ 테스트 {i} 통과")
+
+        print("✅ 대학교 정보 요청 추출 테스트 통과")
+
+    def test_extract_specific_info_request_birth_death(self):
+        """특정 정보 요청 추출 - 출생/사망 테스트"""
+        test_cases = [
+            ("언제 태어났어", "birth"),
+            ("출생일이 언제야", "birth"),
+            ("나이가 몇이야", "birth"),
+            ("언제 죽었어", "death"),
+            ("사망일 알려줘", "death"),
+            ("언제 태어나서 언제 죽었어", "birth_death"),
+        ]
+
+        print(f"  📅 출생/사망 정보 요청 추출 테스트")
+        print(f"  📋 테스트 케이스: {len(test_cases)}개")
+
+        for i, (query, expected) in enumerate(test_cases, 1):
+            print(f"    {i}. 쿼리: '{query}' → 예상: '{expected}'")
+
+            result = self.chain._extract_specific_info_request(query)
+
+            print(f"       📊 추출 결과: '{result}'")
+            print(f"       ✅ 정확성: {result == expected}")
+
+            assert result == expected
+            print(f"       ✅ 테스트 {i} 통과")
+
+        print("✅ 출생/사망 정보 요청 추출 테스트 통과")
+
+    def test_extract_specific_answer_university(self):
+        """특정 답변 추출 - 대학교 정보 테스트"""
+        info_type = "university"
+        author_name = "한강"
+
+        print(f"  🎓 대학교 정보 추출 테스트")
+        print(f"  📝 작가: {author_name}")
+        print(f"  📊 추출 대상: 연세대학교")
+
+        result = self.chain._extract_specific_answer(
+            self.sample_search_result,
+            info_type,
+            author_name
+        )
+
+        print(f"  📊 추출 결과:")
+        print(f"    - 메시지 길이: {len(result)}")
+        print(f"    - '연세대학교' 포함: {'연세대학교' in result}")
+        print(f"    - '졸업' 포함: {'졸업' in result}")
+        print(f"    - URL 포함: {'http' in result}")
+
+        assert '연세대학교' in result
+        assert '졸업' in result
+        assert 'http' in result
+
+        print("✅ 대학교 정보 추출 테스트 통과")
+
+    def test_extract_specific_answer_birth(self):
+        """특정 답변 추출 - 출생 정보 테스트"""
+        info_type = "birth"
+        author_name = "한강"
+
+        print(f"  👶 출생 정보 추출 테스트")
+        print(f"  📝 작가: {author_name}")
+        print(f"  📊 추출 대상: 1970년 11월 27일")
+
+        result = self.chain._extract_specific_answer(
+            self.sample_search_result,
+            info_type,
+            author_name
+        )
+
+        print(f"  📊 추출 결과:")
+        print(f"    - 메시지 길이: {len(result)}")
+        print(f"    - '1970' 포함: {'1970' in result}")
+        print(f"    - '태어났습니다' 포함: {'태어났습니다' in result}")
+
+        assert '1970' in result
+        assert '태어났습니다' in result or '태어나' in result
+
+        print("✅ 출생 정보 추출 테스트 통과")
+
+    def test_extract_specific_answer_family(self):
+        """특정 답변 추출 - 가족 정보 테스트"""
+        info_type = "family"
+        author_name = "한강"
+
+        print(f"  👨‍👩‍👧‍👦 가족 정보 추출 테스트")
+        print(f"  📝 작가: {author_name}")
+        print(f"  📊 추출 대상: 아버지 한승원")
+
+        # WikiInformationExtractor.find_enhanced_family_info 모킹
+        with patch('app.chains.wiki_search_chain.WikiInformationExtractor') as mock_extractor:
+            mock_extractor.find_enhanced_family_info.return_value = {
+                'father': '한승원',
+                'mother': None,
+                'siblings': [],
+                'family': []
+            }
+
+            result = self.chain._extract_specific_answer(
+                self.sample_search_result,
+                info_type,
+                author_name
+            )
+
+        print(f"  📊 추출 결과:")
+        print(f"    - 메시지 길이: {len(result)}")
+        print(f"    - '한승원' 포함: {'한승원' in result}")
+        print(f"    - '아버지' 포함: {'아버지' in result}")
+
+        assert '한승원' in result
+        assert '아버지' in result
+
+        print("✅ 가족 정보 추출 테스트 통과")
+
+
+class TestWikiSearchChainHelperMethods:
+    """WikiSearchChain 헬퍼 메서드 테스트"""
+
+    def setup_method(self):
+        """각 테스트 전에 실행되는 설정"""
+        self.chain = WikiSearchChain()
+
+    def test_is_author_result_positive_cases(self):
+        """작가 결과 판별 - 긍정적 케이스 테스트"""
+        positive_cases = [
+            {
+                'success': True,
+                'title': '김영하 (작가)',
+                'summary': '김영하는 대한민국의 소설가이다.',
+                'content': '주요 작품으로는...'
+            },
+            {
+                'success': True,
+                'title': '한강',
+                'summary': '한강은 시인이자 소설가이다.',
+                'content': '작품 활동을...'
+            },
+            {
+                'success': True,
+                'title': '이말년',
+                'summary': '이말년은 만화가이다.',
+                'content': '웹툰을...'
+            }
+        ]
+
+        print(f"  ✅ 작가 결과 판별 - 긍정적 케이스 테스트")
+        print(f"  📋 테스트 케이스: {len(positive_cases)}개")
+
+        for i, case in enumerate(positive_cases, 1):
+            print(f"    {i}. 제목: '{case['title']}'")
+            print(f"       요약: '{case['summary'][:30]}...'")
+
+            result =self.chain._fallback_analyze_intent(query)
+
+            print(f"       📊 결과: 타입={result.get('type')}, 책={result.get('book_title')}")
+            print(f"       ✅ 정확성: {result.get('type') == expected_type}")
+
+            assert result.get('type') == expected_type
+            if expected_book:
+                assert expected_book in result.get('book_title', '')
+
+            print(f"       ✅ 테스트 {i} 통과")
+
+            print("✅ 책→작가 패턴 분석 테스트 통과")
 
 
 class TestWikiSearchChainComplexScenarios:
@@ -832,336 +1162,5 @@ if __name__ == "__main__":
     print("    cd ai-service")
     print("    python -m pytest tests/unit/chains/test_wiki_search_chain.py -v -s")
     print("\n🚀 개별 실행:")
-    print("    python tests/unit/chains/test_wiki_search_chain.py") self.chain._fallback_analyze_intent(query)
+    print("    python tests/unit/chains/test_wiki_search_chain.py")
 
-    print(f"       📊 결과: 타입={result.get('type')}, 책={result.get('book_title')}")
-    print(f"       ✅ 정확성: {result.get('type') == expected_type}")
-
-    assert result.get('type') == expected_type
-    if expected_book:
-        assert expected_book in result.get('book_title', '')
-
-    print(f"       ✅ 테스트 {i} 통과")
-
-    print("✅ 책→작가 패턴 분석 테스트 통과")
-
-
-class TestWikiSearchChainSearchHandlers:
-    """WikiSearchChain 검색 핸들러 테스트"""
-
-    def setup_method(self):
-        """각 테스트 전에 실행되는 설정"""
-        self.mock_llm_client = Mock()
-        self.chain = WikiSearchChain(llm_client=self.mock_llm_client)
-        self.chain.tool = Mock()
-        self.chain.prompt = Mock()
-
-    def test_handle_author_search_query_success(self):
-        """작가 검색 쿼리 처리 성공 테스트"""
-        query = "김영하 작가에 대해 알려줘"
-        author_name = "김영하"
-        query_intent = {'type': 'author_search', 'keywords': ['김영하']}
-        context = {}
-
-        print(f"  👤 작가 검색 쿼리 처리 테스트")
-        print(f"  📝 쿼리: '{query}'")
-        print(f"  🎯 작가명: '{author_name}'")
-
-        # 성공적인 검색 결과 모킹
-        self.chain.tool.search_page.return_value = {
-            'success': True,
-            'title': '김영하 (작가)',
-            'summary': '김영하는 대한민국의 소설가이다.',
-            'content': '김영하는 1968년 경기도에서 태어났다.',
-            'url': 'https://ko.wikipedia.org/wiki/김영하_(작가)'
-        }
-
-        # LLM 답변 생성 모킹
-        self.mock_llm_client.chat.completions.create.return_value = Mock(
-            choices=[Mock(message=Mock(content="김영하는 1968년에 태어난 대한민국의 소설가입니다."))]
-        )
-
-        result = self.chain._handle_author_search_query(query, author_name, query_intent, context)
-
-        print(f"  📊 처리 결과:")
-        print(f"    - 액션: {result.get('action')}")
-        print(f"    - 메시지 존재: {bool(result.get('message'))}")
-        print(f"    - 작가명 설정: {result.get('update_context', {}).get('current_author')}")
-        print(f"  ✅ 검색 도구 호출: {self.chain.tool.search_page.called}")
-
-        assert result.get('action') == 'show_result'
-        assert result.get('message')
-        assert result.get('update_context', {}).get('current_author') == '김영하'
-
-        print("✅ 작가 검색 쿼리 처리 성공 테스트 통과")
-
-    def test_handle_author_search_query_disambiguation(self):
-        """작가 검색 - 동명이인 처리 테스트"""
-        query = "한강 작가"
-        author_name = "한강"
-        query_intent = {'type': 'author_search', 'keywords': ['한강']}
-        context = {}
-
-        print(f"  🔍 동명이인 처리 테스트")
-        print(f"  📝 쿼리: '{query}'")
-        print(f"  🎯 상황: 동명이인 존재")
-
-        # 동명이인 페이지 모킹
-        self.chain.tool.search_page.return_value = {
-            'success': True,
-            'title': '한강',
-            'summary': '한강은 다음 사람을 가리킨다.',
-            'content': '한강 (강), 한강 (작가)',
-            'url': 'https://ko.wikipedia.org/wiki/한강'
-        }
-
-        self.chain.prompt.get_search_failure_message.return_value = "한강에 대한 여러 정보가 있습니다."
-
-        result = self.chain._handle_author_search_query(query, author_name, query_intent, context)
-
-        print(f"  📊 처리 결과:")
-        print(f"    - 액션: {result.get('action')}")
-        print(f"    - 명확화 요청: {result.get('action') == 'ask_clarification'}")
-        print(f"    - 대기 상태 설정: {result.get('update_context', {}).get('waiting_for_clarification')}")
-
-        assert result.get('action') == 'ask_clarification'
-        assert result.get('update_context', {}).get('waiting_for_clarification') == True
-        assert result.get('update_context', {}).get('current_author') == author_name
-
-        print("✅ 동명이인 처리 테스트 통과")
-
-    def test_handle_book_to_author_query_success(self):
-        """책→작가 쿼리 처리 성공 테스트"""
-        book_title = "개미"
-        query_intent = {'type': 'book_to_author', 'book_title': '개미'}
-        context = {}
-
-        print(f"  📖 책→작가 쿼리 처리 테스트")
-        print(f"  📝 책 제목: '{book_title}'")
-        print(f"  🎯 예상: 작가 정보 추출")
-
-        # 책 검색 결과 모킹
-        self.chain.tool.search_page.return_value = {
-            'success': True,
-            'title': '개미 (소설)',
-            'summary': '개미는 베르나르 베르베르의 소설이다.',
-            'content': '이 소설은 베르나르 베르베르가 1991년에 발표했다.',
-            'url': 'https://ko.wikipedia.org/wiki/개미_(소설)'
-        }
-
-        # LLM 작가 추출 모킹
-        self.mock_llm_client.chat.completions.create.return_value = Mock(
-            choices=[Mock(message=Mock(content="베르나르 베르베르"))]
-        )
-
-        result = self.chain._handle_book_to_author_query(book_title, query_intent, context)
-
-        print(f"  📊 처리 결과:")
-        print(f"    - 액션: {result.get('action')}")
-        print(f"    - 메시지 포함 '베르베르': {'베르베르' in result.get('message', '')}")
-        print(f"    - 작가명 추출: {result.get('update_context', {}).get('current_author')}")
-
-        assert result.get('action') == 'show_result'
-        assert '베르베르' in result.get('message', '') or '개미' in result.get('message', '')
-
-        print("✅ 책→작가 쿼리 처리 성공 테스트 통과")
-
-
-class TestWikiSearchChainInformationExtraction:
-    """WikiSearchChain 정보 추출 테스트"""
-
-    def setup_method(self):
-        """각 테스트 전에 실행되는 설정"""
-        self.mock_llm_client = Mock()
-        self.chain = WikiSearchChain(llm_client=self.mock_llm_client)
-
-        # 샘플 검색 결과
-        self.sample_search_result = {
-            'success': True,
-            'title': '한강 (작가)',
-            'summary': '한강은 대한민국의 소설가이다.',
-            'content': '''한강은 1970년 11월 27일 광주광역시에서 태어났다. 
-                         연세대학교 국어국문학과를 졸업했다. 
-                         아버지는 소설가 한승원이다.
-                         대표작으로는 채식주의자, 소년이 온다 등이 있다.
-                         2016년 맨부커상을 수상했다.''',
-            'url': 'https://ko.wikipedia.org/wiki/한강_(작가)'
-        }
-
-    def test_extract_specific_info_request_university(self):
-        """특정 정보 요청 추출 - 대학교 테스트"""
-        test_cases = [
-            ("한강 대학교 어디야", "university"),
-            ("그 작가 어디 대학 나왔어", "university"),
-            ("학교 정보 알려줘", "university"),
-            ("출신 대학 어디", "university"),
-        ]
-
-        print(f"  🎓 대학교 정보 요청 추출 테스트")
-        print(f"  📋 테스트 케이스: {len(test_cases)}개")
-
-        for i, (query, expected) in enumerate(test_cases, 1):
-            print(f"    {i}. 쿼리: '{query}'")
-
-            result = self.chain._extract_specific_info_request(query)
-
-            print(f"       📊 추출 결과: '{result}'")
-            print(f"       ✅ 정확성: {result == expected}")
-
-            assert result == expected
-            print(f"       ✅ 테스트 {i} 통과")
-
-        print("✅ 대학교 정보 요청 추출 테스트 통과")
-
-    def test_extract_specific_info_request_birth_death(self):
-        """특정 정보 요청 추출 - 출생/사망 테스트"""
-        test_cases = [
-            ("언제 태어났어", "birth"),
-            ("출생일이 언제야", "birth"),
-            ("나이가 몇이야", "birth"),
-            ("언제 죽었어", "death"),
-            ("사망일 알려줘", "death"),
-            ("언제 태어나서 언제 죽었어", "birth_death"),
-        ]
-
-        print(f"  📅 출생/사망 정보 요청 추출 테스트")
-        print(f"  📋 테스트 케이스: {len(test_cases)}개")
-
-        for i, (query, expected) in enumerate(test_cases, 1):
-            print(f"    {i}. 쿼리: '{query}' → 예상: '{expected}'")
-
-            result = self.chain._extract_specific_info_request(query)
-
-            print(f"       📊 추출 결과: '{result}'")
-            print(f"       ✅ 정확성: {result == expected}")
-
-            assert result == expected
-            print(f"       ✅ 테스트 {i} 통과")
-
-        print("✅ 출생/사망 정보 요청 추출 테스트 통과")
-
-    def test_extract_specific_answer_university(self):
-        """특정 답변 추출 - 대학교 정보 테스트"""
-        info_type = "university"
-        author_name = "한강"
-
-        print(f"  🎓 대학교 정보 추출 테스트")
-        print(f"  📝 작가: {author_name}")
-        print(f"  📊 추출 대상: 연세대학교")
-
-        result = self.chain._extract_specific_answer(
-            self.sample_search_result,
-            info_type,
-            author_name
-        )
-
-        print(f"  📊 추출 결과:")
-        print(f"    - 메시지 길이: {len(result)}")
-        print(f"    - '연세대학교' 포함: {'연세대학교' in result}")
-        print(f"    - '졸업' 포함: {'졸업' in result}")
-        print(f"    - URL 포함: {'http' in result}")
-
-        assert '연세대학교' in result
-        assert '졸업' in result
-        assert 'http' in result
-
-        print("✅ 대학교 정보 추출 테스트 통과")
-
-    def test_extract_specific_answer_birth(self):
-        """특정 답변 추출 - 출생 정보 테스트"""
-        info_type = "birth"
-        author_name = "한강"
-
-        print(f"  👶 출생 정보 추출 테스트")
-        print(f"  📝 작가: {author_name}")
-        print(f"  📊 추출 대상: 1970년 11월 27일")
-
-        result = self.chain._extract_specific_answer(
-            self.sample_search_result,
-            info_type,
-            author_name
-        )
-
-        print(f"  📊 추출 결과:")
-        print(f"    - 메시지 길이: {len(result)}")
-        print(f"    - '1970' 포함: {'1970' in result}")
-        print(f"    - '태어났습니다' 포함: {'태어났습니다' in result}")
-
-        assert '1970' in result
-        assert '태어났습니다' in result or '태어나' in result
-
-        print("✅ 출생 정보 추출 테스트 통과")
-
-    def test_extract_specific_answer_family(self):
-        """특정 답변 추출 - 가족 정보 테스트"""
-        info_type = "family"
-        author_name = "한강"
-
-        print(f"  👨‍👩‍👧‍👦 가족 정보 추출 테스트")
-        print(f"  📝 작가: {author_name}")
-        print(f"  📊 추출 대상: 아버지 한승원")
-
-        # WikiInformationExtractor.find_enhanced_family_info 모킹
-        with patch('app.chains.wiki_search_chain.WikiInformationExtractor') as mock_extractor:
-            mock_extractor.find_enhanced_family_info.return_value = {
-                'father': '한승원',
-                'mother': None,
-                'siblings': [],
-                'family': []
-            }
-
-            result = self.chain._extract_specific_answer(
-                self.sample_search_result,
-                info_type,
-                author_name
-            )
-
-        print(f"  📊 추출 결과:")
-        print(f"    - 메시지 길이: {len(result)}")
-        print(f"    - '한승원' 포함: {'한승원' in result}")
-        print(f"    - '아버지' 포함: {'아버지' in result}")
-
-        assert '한승원' in result
-        assert '아버지' in result
-
-        print("✅ 가족 정보 추출 테스트 통과")
-
-
-class TestWikiSearchChainHelperMethods:
-    """WikiSearchChain 헬퍼 메서드 테스트"""
-
-    def setup_method(self):
-        """각 테스트 전에 실행되는 설정"""
-        self.chain = WikiSearchChain()
-
-    def test_is_author_result_positive_cases(self):
-        """작가 결과 판별 - 긍정적 케이스 테스트"""
-        positive_cases = [
-            {
-                'success': True,
-                'title': '김영하 (작가)',
-                'summary': '김영하는 대한민국의 소설가이다.',
-                'content': '주요 작품으로는...'
-            },
-            {
-                'success': True,
-                'title': '한강',
-                'summary': '한강은 시인이자 소설가이다.',
-                'content': '작품 활동을...'
-            },
-            {
-                'success': True,
-                'title': '이말년',
-                'summary': '이말년은 만화가이다.',
-                'content': '웹툰을...'
-            }
-        ]
-
-        print(f"  ✅ 작가 결과 판별 - 긍정적 케이스 테스트")
-        print(f"  📋 테스트 케이스: {len(positive_cases)}개")
-
-        for i, case in enumerate(positive_cases, 1):
-            print(f"    {i}. 제목: '{case['title']}'")
-            print(f"       요약: '{case['summary'][:30]}...'")
-
-            result =
