@@ -17,6 +17,14 @@ def run_genre_tool(genre: str, user_input: str = "") -> str:
             "k": 3
         }
     )
+    # retriever = vectorstore.as_retriever(
+    #     search_type="mmr",
+    #     search_kwargs={
+    #         "k": 3,
+    #         "fetch_k": 10,
+    #         "lambda_mult": 0.7
+    #     }
+    # )
 
     search_query = f"{user_input} 요청에 따른 {genre} 장르의 책"
     docs = retriever.invoke(search_query)

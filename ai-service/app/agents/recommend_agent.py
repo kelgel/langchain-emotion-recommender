@@ -27,8 +27,8 @@ def run_recommend_agent(query_data: dict) -> str:
     has_multiple = sum([
         bool(emotion),
         bool(genre),
-        bool(author),
-        bool(keywords)
+        bool(author)
+        #bool(keywords)
     ]) >= 2
 
     if has_multiple:
@@ -66,11 +66,11 @@ if __name__ == "__main__":
     #     "user_input": "우울할 때 위로가 되는 책 추천해줘"
     # }
     sample_query = {
-        "emotion": "",
-        "genre": "",
-        "author": "한강",
+        "emotion": "사랑스러운",
+        "genre": "소설",
+        "author": "",
         "keywords": [],
-        "user_input": "한강 도서 추천"
+        "user_input": "사랑스러운 소설 추천"
     }
     print(run_recommend_agent(sample_query))
 
