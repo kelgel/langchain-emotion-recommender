@@ -2,7 +2,8 @@ from langchain.tools import StructuredTool
 from config.llm import recommendation_llm, vectorstore
 from prompts.recommend_prompt import recommend_prompt
 #from prompts.emotion_prompt import emotion_prompt
-from utils.formatters import format_recommendation_result_with_isbn
+from utils.formatters import format_recommendation_result_with_isbn, format_links_only, combine_response_with_links
+from utils.fallback_data import fallback_books
 
 def run_emotion_tool(emotion: str, user_input: str = "") -> str:
     if not emotion:
@@ -34,8 +35,10 @@ def run_emotion_tool(emotion: str, user_input: str = "") -> str:
     #     print(doc.metadata)
 
     if not docs:
-            return f"❌ '{emotion}' 감정에 맞는 책을 찾지 못했어요. 다른 감정을 입력해보세요."
-
+        fallback = fallback_books.get("emotion", {}).get(emotion)
+        if fallback:
+            return f"❗'{emotion}' 감정에 어울리는 기본 도서를 추천합니다:\n" + "\n".join(fallback)
+        return f"❌ '{emotion}' 감정에 맞는 책을 찾지 못했어요. 다른 감정을 입력해보세요."
     # 검색 결과 문서 구성
     #retrieved_docs = "\n\n".join([f"{i+1}. {doc.page_content}" for i, doc in enumerate(docs)])
     #url 형식에 맞춘 결과 반환 - 우선 감정 툴에만 추가
@@ -55,7 +58,9 @@ def run_emotion_tool(emotion: str, user_input: str = "") -> str:
     #     retrieved_docs=retrieved_docs
     # )
     # LLM  호출 및 응답 반환
-    return recommendation_llm.invoke(prompt).content
+    llm_result = recommendation_llm.invoke(prompt).content
+    return combine_response_with_links(llm_result, docs)
+
 
 # LangChain Tool 객체로 등록
 emotion_tool = StructuredTool.from_function(

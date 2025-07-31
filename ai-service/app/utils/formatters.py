@@ -19,9 +19,34 @@
 #         formatted.append(entry)
 #     return "\n\n".join(formatted)
 #
-
+import re
 from typing import List
 from langchain_core.documents import Document
+
+def format_links_only(docs: List[Document]) -> List[str]:  # 🔄 반환값을 리스트로
+    links = []
+    for doc in docs:
+        isbn = doc.metadata.get("isbn", "")
+        if isbn:
+            url = f"http://localhost:8080/product/detail?isbn={isbn}"
+            links.append(f"🔗 {url}")
+    return links
+
+def combine_response_with_links(llm_response: str, docs: List[Document]) -> str:
+    links = format_links_only(docs)  # 🔄 이제는 리스트
+    llm_lines = llm_response.strip().split("\n")
+    combined_output = []
+
+    doc_index = 0
+    for line in llm_lines:
+        combined_output.append(line)
+        # 번호로 시작하는 줄일 때 링크 삽입
+        if re.match(rf"^{doc_index+1}\.", line.strip()):
+            if doc_index < len(links):
+                combined_output.append(links[doc_index])  # 번호 없는 🔗 링크
+            doc_index += 1
+
+    return "\n".join(combined_output)
 
 def format_recommendation_result_with_isbn(docs: List[Document]) -> str:
     formatted = []
@@ -53,3 +78,4 @@ def format_recommendation_result_with_isbn(docs: List[Document]) -> str:
             break
 
     return "\n\n".join(formatted)
+
