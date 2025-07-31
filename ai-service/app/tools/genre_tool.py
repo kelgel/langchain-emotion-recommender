@@ -2,6 +2,8 @@ from langchain.tools import StructuredTool
 from config.llm import recommendation_llm, vectorstore
 # from prompts.genre_prompt import genre_prompt
 from prompts.recommend_prompt import recommend_prompt
+from utils.formatters import format_recommendation_result_with_isbn
+
 
 def run_genre_tool(genre: str, user_input: str = "") -> str:
     if not genre:
@@ -20,10 +22,24 @@ def run_genre_tool(genre: str, user_input: str = "") -> str:
     docs = retriever.invoke(search_query)
 
     if not docs:
-        return f"❌ '{genre}' 장르 맞는 책을 찾지 못했어요. 다른 장르를 입력해보세요."
+        # ✅ fallback 추천 도서
+        fallback = {
+            "자기계발서": [
+                "1. 아침 5시의 기적 - 할 엘로드",
+                "2. 무조건 성공하는 사람들의 습관 - 찰스 두히그",
+                "3. 작은 습관의 힘 - 제임스 클리어"
+            ],
+            # 다른 장르도 추가 가능
+        }.get(genre)
 
+        if fallback:
+            return f"❗검색 결과가 없어서 기본 추천을 드립니다:\n" + "\n".join(fallback)
+
+        return "❌ 관련 도서를 찾지 못했어요. 다른 키워드로 시도해보세요."
     # 검색 결과 구성
-    retrieved_docs = "\n\n".join([f"{i+1}. {doc.page_content}" for i, doc in enumerate(docs)])
+    #retrieved_docs = "\n\n".join([f"{i+1}. {doc.page_content}" for i, doc in enumerate(docs)])
+    retrieved_docs = format_recommendation_result_with_isbn(docs)
+
 
     # 프롬프트 구성
     # prompt = genre_prompt.format(
@@ -33,7 +49,8 @@ def run_genre_tool(genre: str, user_input: str = "") -> str:
     # )
     prompt = recommend_prompt.format(
         emotion="",
-        genre="genre",
+        genre=genre,
+        author="",
         keywords="",
         retrieved_docs=retrieved_docs
     )

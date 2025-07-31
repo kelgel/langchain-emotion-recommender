@@ -1,3 +1,4 @@
+from humanfriendly.usage import render_usage
 from langchain_core.prompts import PromptTemplate
 from langchain_core.documents import Document
 from dotenv import load_dotenv
@@ -6,6 +7,8 @@ from config.llm import recommendation_llm, vectorstore
 from prompts.recommend_prompt import recommend_prompt
 from tools.emotion_tool import run_emotion_tool
 from tools.genre_tool import run_genre_tool
+from tools.author_tool import run_author_tool
+from tools.hybrid_tool import run_hybrid_tool
 # 환경 변수 불러오기
 load_dotenv()
 
@@ -13,16 +16,44 @@ load_dotenv()
 def run_recommend_agent(query_data: dict) -> str:
     emotion = query_data.get("emotion", "")
     genre = query_data.get("genre", "")
+    author = query_data.get("author", "")
     keywords = query_data.get("keywords", [])
-    keyword_str = ", ".join(keywords) if isinstance(keywords, list) else str(keywords)
+    #keyword_str = ", ".join(keywords) if isinstance(keywords, list) else str(keywords)
     user_input = query_data.get("user_input", "")
 
-    # ✅ 감정만 있는 경우
+    print(f"[DEBUG] emotion: '{emotion}', genre: '{genre}', author: '{author}', keywords: {keywords}")
+
+    # 복합 조건 → hybrid_tool
+    has_multiple = sum([
+        bool(emotion),
+        bool(genre),
+        bool(author),
+        bool(keywords)
+    ]) >= 2
+
+    if has_multiple:
+        print("hybrid_tool 사용")
+        info = {
+            "emotion": emotion,
+            "genre": genre,
+            "author": author,
+            "keywords": keywords,
+            "user_input": user_input
+        }
+        return run_hybrid_tool(info)
+
+    # 단일 조건 처리
     if emotion:
+        print("emotion_tool 사용")
         return run_emotion_tool(emotion=emotion, user_input=user_input)
 
     if genre:
+        print("genre_tool 사용")
         return run_genre_tool(genre=genre, user_input=user_input)
+
+    if author:
+        print("author_tool 사용")
+        return run_author_tool(author=author, user_input=user_input)
 
     # ❌ 조건 부족
     return "❗추천을 위해 감정, 장르, 키워드 중 하나 이상이 필요합니다."
@@ -36,9 +67,10 @@ if __name__ == "__main__":
     # }
     sample_query = {
         "emotion": "",
-        "genre": "에세이",
+        "genre": "",
+        "author": "한강",
         "keywords": [],
-        "user_input": "에세이 추천"
+        "user_input": "한강 도서 추천"
     }
     print(run_recommend_agent(sample_query))
 

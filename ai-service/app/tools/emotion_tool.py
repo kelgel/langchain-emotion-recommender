@@ -44,6 +44,7 @@ def run_emotion_tool(emotion: str, user_input: str = "") -> str:
     prompt = recommend_prompt.format(
         emotion=emotion,
         genre="",  # 비워도 됨
+        author="",
         keywords="",  # 필요시 추출값 사용
         retrieved_docs=retrieved_docs
     )
