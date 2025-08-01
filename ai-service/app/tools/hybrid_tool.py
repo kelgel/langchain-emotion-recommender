@@ -3,7 +3,8 @@
 from langchain.tools import StructuredTool
 from config.llm import recommendation_llm, vectorstore
 from prompts.recommend_prompt import recommend_prompt
-from utils.formatters import format_recommendation_result_with_isbn
+from utils.formatters import format_recommendation_result_with_isbn, format_links_only, combine_response_with_links
+from utils.fallback_data import fallback_books
 
 def run_hybrid_tool(info: dict) -> str:
     emotion = str(info.get("emotion") or "")
@@ -36,8 +37,12 @@ def run_hybrid_tool(info: dict) -> str:
     docs = retriever.invoke(query_summary)
 
     if not docs:
+        fallback = fallback_books.get("hybrid")
+        if fallback:
+            return f"❗조건({query_summary})에 맞는 책이 없어 기본 도서를 추천합니다:\n" + "\n".join(fallback)
         return f"❌ 관련 도서를 찾지 못했어요. (조건: {query_summary})"
 
+    #검색 결과 구성
     retrieved_docs = format_recommendation_result_with_isbn(docs)
 
     prompt = recommend_prompt.format(
@@ -48,7 +53,8 @@ def run_hybrid_tool(info: dict) -> str:
         retrieved_docs=retrieved_docs
     )
 
-    return recommendation_llm.invoke(prompt).content
+    llm_result = recommendation_llm.invoke(prompt).content
+    return combine_response_with_links(llm_result, docs)
 
 hybrid_tool = StructuredTool.from_function(
     name="HybridRecommendationTool",

@@ -3,7 +3,8 @@
 from langchain.tools import StructuredTool
 from config.llm import  recommendation_llm, vectorstore
 from prompts.recommend_prompt import recommend_prompt
-from utils.formatters import format_recommendation_result_with_isbn
+from utils.formatters import format_recommendation_result_with_isbn, format_links_only, combine_response_with_links
+from utils.fallback_data import fallback_books
 
 def run_author_tool(author: str, user_input: str="")-> str:
     if not author:
@@ -33,16 +34,9 @@ def run_author_tool(author: str, user_input: str="")-> str:
     docs = retriever.invoke(search_query)
 
     if not docs:
-        #fallback 추천 도서
-        fallback = {
-            "베스트셀러": [
-                "나인 (2025 썸머 포켓 북 에디션) - 천선란"
-            ]
-        }.get(author)
-
+        fallback = fallback_books.get("author", {}).get(author)
         if fallback:
-            return f"❗검색 결과가 없어서 기본 추천을 드립니다:\n" + "\n".join(fallback)
-
+            return f"❗검색 결과가 없어 작가 '{author}'의 기본 추천 도서를 드립니다:\n" + "\n".join(fallback)
         return "❌ 관련 도서를 찾지 못했어요. 다른 키워드로 시도해보세요."
 
     retrieved_docs = format_recommendation_result_with_isbn(docs)
@@ -56,7 +50,8 @@ def run_author_tool(author: str, user_input: str="")-> str:
         retrieved_docs=retrieved_docs
     )
 
-    return recommendation_llm.invoke(prompt).content
+    llm_result = recommendation_llm.invoke(prompt).content
+    return combine_response_with_links(llm_result, docs)
 
 author_tool = StructuredTool.from_function(
     name="AuthorRecommendationTool",

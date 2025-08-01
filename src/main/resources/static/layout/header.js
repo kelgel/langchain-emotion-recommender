@@ -812,7 +812,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="bot-message">안녕하세요! 책크인 AI 서비스입니다.<br>어떤 서비스를 찾고 계신가요?
                         <div class="message-suggestions">
                             <button class="suggestion-btn" data-text="작가 한강 정보 알려줘">🕵️ 위키서비스</button>
-                            <button class="suggestion-btn" data-text="우울한데 위로가 되는 책 추천해줘">😌 우울할 때 위로가 되는 책</button>
+                            <button class="suggestion-btn" data-text="우울한데 위로가 되는 책 추천해줘">😌 힐링 도서</button>
                             <button class="suggestion-btn" data-text="자기계발서 추천해줘">💪 자기계발</button>
                         </div>
                     </div>

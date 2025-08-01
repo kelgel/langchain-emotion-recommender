@@ -23,12 +23,26 @@ def run_recommend_agent(query_data: dict) -> str:
 
     print(f"[DEBUG] emotion: '{emotion}', genre: '{genre}', author: '{author}', keywords: {keywords}")
 
-    # 복합 조건 → hybrid_tool
+    # author 조건이 있을 경우 가장 먼저 처리
+    if author:
+        print("author_tool 사용")
+        return run_author_tool(author=author, user_input=user_input)
+
+    # emotion 조건만 있을 경우
+    if emotion and not genre and not keywords:
+        print("emotion_tool 사용")
+        return run_emotion_tool(emotion=emotion, user_input=user_input)
+
+    # genre 조건만 있을 경우
+    if genre and not emotion and not keywords:
+        print("genre_tool 사용")
+        return run_genre_tool(genre=genre, user_input=user_input)
+
+    # 그 외 emotion + genre 등 복합 조건 → hybrid_tool
     has_multiple = sum([
         bool(emotion),
         bool(genre),
-        bool(author)
-        #bool(keywords)
+        bool(keywords)
     ]) >= 2
 
     if has_multiple:
@@ -36,28 +50,14 @@ def run_recommend_agent(query_data: dict) -> str:
         info = {
             "emotion": emotion,
             "genre": genre,
-            "author": author,
+            "author": author,  # author는 보통 위에서 빠지지만, 포함해도 무방
             "keywords": keywords,
             "user_input": user_input
         }
         return run_hybrid_tool(info)
 
-    # 단일 조건 처리
-    if emotion:
-        print("emotion_tool 사용")
-        return run_emotion_tool(emotion=emotion, user_input=user_input)
-
-    if genre:
-        print("genre_tool 사용")
-        return run_genre_tool(genre=genre, user_input=user_input)
-
-    if author:
-        print("author_tool 사용")
-        return run_author_tool(author=author, user_input=user_input)
-
-    # ❌ 조건 부족
-    return "❗추천을 위해 감정, 장르, 키워드 중 하나 이상이 필요합니다."
-
+    # ❌ 아무 조건도 없을 때
+    return "❗추천을 위해 감정, 장르, 작가, 키워드 중 하나 이상이 필요합니다."
 if __name__ == "__main__":
     # sample_query = {
     #     "emotion": "우울",
