@@ -11,21 +11,32 @@ def needs_clarification(intent: str, info: dict) -> bool:
 
     # 1. 도서 추천 (recommendation)
     # 감정+장르 or 작가 or 키워드 중 하나라도 있으면 추천 가능
-    if intent ==  "recommendation":
-        if intent == "recommendation":
-            genre = info.get("genre")
-            emotion = info.get("emotion")
+    if intent == "recommendation":
+        genre = info.get("genre")
+        emotion = info.get("emotion")
+        author = info.get("author")
+        keywords = info.get("keywords")
 
-        # ✅ 감정과 장르 모두 없으면 → 둘 다 물어봐야 함
-        if not genre and not emotion:
-            return True
+        # ✅ 추천 조건: 네 가지 중 하나라도 있으면 충분
+        if any([genre, emotion, author, keywords]):
+            return False  # 조건 충분 → clarification 필요 없음
 
-        # ✅ 감정 없고 장르만 있을 경우 → Clarification 생략 (바로 추천 가능)
-        if genre and not emotion:
-            return False  # 여기 중요!
-
-        # ✅ 둘 다 있으면 당연히 문제 없음
-        return False
+        return True  # 네 가지 모두 없음 → clarification 필요
+    # if intent ==  "recommendation":
+    #     if intent == "recommendation":
+    #         genre = info.get("genre")
+    #         emotion = info.get("emotion")
+    #
+    #     # ✅ 감정과 장르 모두 없으면 → 둘 다 물어봐야 함
+    #     if not genre and not emotion:
+    #         return True
+    #
+    #     # ✅ 감정 없고 장르만 있을 경우 → Clarification 생략 (바로 추천 가능)
+    #     if genre and not emotion:
+    #         return False  # 여기 중요!
+    #
+    #     # ✅ 둘 다 있으면 당연히 문제 없음
+    #     return False
 
     # 2. 도서/작가 정보 요청(info)
     # 책 제목 or 작가 이름 둘 중 하나라도 있어야함

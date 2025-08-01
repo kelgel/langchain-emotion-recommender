@@ -7,12 +7,13 @@ from langchain_core.prompts import PromptTemplate
 
 # 1. 도서 추천 intent
 book_recommendation_prompt = PromptTemplate(
-    input_variables = ["emotion", "genre"],
+    input_variables = ["emotion", "genre", "author"],
     template="""
     당신은 감정 기반 도서 추천 챗봇입니다.
     사용자의 요청에서 다음 정보가 부족합니다:
     - 감정(emotion): {emotion}
     - 장르(genre): {genre}
+    - 작가(author): {author}
     
     당신의 임무는 **누락된 정보에 따라 질문 혹은 문장만 생성하는 것**입니다.
 

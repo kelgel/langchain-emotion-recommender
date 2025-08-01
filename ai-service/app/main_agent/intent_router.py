@@ -6,10 +6,15 @@ def route_intent(intent: str, query_data: dict, current_agent: str = None, sessi
     
     if agent_instances is None:
         agent_instances = {}
-
     if intent == "recommendation":
         print(f"라우팅: recommendation 에이전트 호출 (현재 에이전트: {current_agent})")
+
+        # ✅ 세션 상태에 recommend로 설정
+        if session is not None:
+            session["current_agent"] = "recommend"
+
         return run_recommend_agent(query_data)
+
     elif intent == "info":
         print(f"라우팅: wiki 에이전트 호출 (현재 에이전트: {current_agent})")
         
