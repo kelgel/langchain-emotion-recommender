@@ -20,10 +20,10 @@
     - 수행 및 제출 과정에서 문제가 발생한 경우, 바로 질의응답 멘토님이나 강사님에게 얘기하세요! (강사님께서 필요시 개별 힌트 제공)
 
 
-# 📚 YESorNO.24 - Spring Boot 온라인 서점 프로젝트
+# 📚 책크인 - AI 기반 온라인 서점 프로젝트
 
 ## 프로젝트 소개 Introduction
-Spring Boot를 활용한 온라인 서점 시스템으로, 사용자와 관리자를 위한 종합적인 도서 쇼핑몰 기능을 제공합니다.
+Spring Boot와 AI 기술을 융합한 지능형 온라인 서점 시스템으로, 사용자와 관리자를 위한 종합적인 도서 쇼핑몰 기능과 **AI 기반 도서 추천 챗봇**을 제공합니다.
 
 ### 주요 특징
 - 🔐 **사용자/관리자 분리된 인증 시스템**
@@ -32,6 +32,9 @@ Spring Boot를 활용한 온라인 서점 시스템으로, 사용자와 관리�
 - 💳 **KakaoPay API 연동 결제 시스템**
 - 📱 **반응형 웹 디자인**
 - ⚡ **캐싱 기반 성능 최적화**
+- 🤖 **AI 도서 추천 챗봇 시스템 (RAG + LLM)**
+- 🧠 **감정 기반 개인화 추천**
+- 🔍 **하이브리드 검색 엔진 (벡터 + 키워드)**
 
 ## 📋 목차
 - [프로젝트 개요](#프로젝트-개요)
@@ -46,7 +49,7 @@ Spring Boot를 활용한 온라인 서점 시스템으로, 사용자와 관리�
 ## 🎯 프로젝트 개요
 
 ### ERD (Entity Relationship Diagram)
-![YESorNO.24 ERD](src/main/resources/static/layout/YESorNO.24_ERD.png)
+![책크인 ERD](src/main/resources/static/layout/책크인_ERD.png)
 
 ### 아키텍처
 ```
@@ -57,13 +60,13 @@ Spring Boot를 활용한 온라인 서점 시스템으로, 사용자와 관리�
 │                                                                │
 │  - @Controller        │  - @Service          │  - @Repository  │
 │  - REST API           │  - 비즈니스 로직      │  - JPA/Hibernate│
-│  - Thymeleaf          │  - 트랜잭션 관리      │  - MySQL 연동    │
+│  - Thymeleaf          │  - 트랜잭션 관리      │  - MySQL 연동   │
 └────────────────────────────────────────────────────────────────┘
 ```
 
 ## 🛠 기술 스택
 
-### Backend
+### Backend (Java Spring Boot)
 - **Java 17** - 최신 LTS 버전
 - **Spring Boot 3.3.1** - 웹 애플리케이션 프레임워크
 - **Spring Data JPA** - ORM 및 데이터 액세스
@@ -71,21 +74,34 @@ Spring Boot를 활용한 온라인 서점 시스템으로, 사용자와 관리�
 - **Hibernate** - ORM 구현체
 - **MySQL 8.0** - 관계형 데이터베이스
 
+### AI Service (Python FastAPI)
+- **Python 3.11+** - AI 서비스 백엔드
+- **FastAPI** - AI API 서버 프레임워크
+- **LangChain** - LLM 오케스트레이션 프레임워크
+- **OpenAI GPT-4** - 대화형 AI 모델
+- **ChromaDB** - 벡터 데이터베이스
+- **OpenAI Embeddings** - 문서 임베딩 생성
+
 ### Frontend
 - **Thymeleaf** - 서버 사이드 템플릿 엔진
 - **HTML5/CSS3** - 마크업 및 스타일링
 - **JavaScript ES6+** - 클라이언트 사이드 로직
 - **부트스트랩 스타일** - 반응형 디자인
 
-### 외부 API
+### 외부 API & AI 서비스
 - **KakaoPay API** - 결제 시스템
 - **JavaMail API** - 이메일 발송 (아이디/비밀번호 찾기)
+- **OpenAI API** - GPT-4 및 임베딩 서비스
+- **Aladin API** - 도서 메타데이터 수집
+- **Kakao Book API** - 추가 도서 정보 수집
 
 ### 개발 도구
 - **IntelliJ IDEA** - 통합 개발 환경
 - **Maven** - 의존성 관리 및 빌드 도구
 - **Git & GitHub** - 버전 관리
 - **MySQL** - 데이터베이스 관리
+- **Docker & Docker Compose** - 컨테이너 기반 배포
+- **VS Code** - Python AI 서비스 개발
 
 ## ✨ 주요 기능
 
@@ -125,6 +141,16 @@ Spring Boot를 활용한 온라인 서점 시스템으로, 사용자와 관리�
 - ✅ 리뷰 페이지네이션
 - ✅ Soft Delete 지원
 
+#### 🤖 **AI 챗봇 기능**
+- ✅ 감정 기반 도서 추천
+- ✅ 자연어 대화 인터페이스
+- ✅ 개인화된 추천 시스템
+- ✅ 세션 기반 대화 관리
+- ✅ 의도 분류 및 쿼리 분석
+- ✅ RAG (Retrieval-Augmented Generation) 기반 검색
+- ✅ 하이브리드 검색 (벡터 + 키워드)
+- ✅ 실시간 clarification 처리
+
 ### 👨‍💼 관리자 기능
 
 #### 📦 **상품 관리**
@@ -150,6 +176,24 @@ Spring Boot를 활용한 온라인 서점 시스템으로, 사용자와 관리�
 - ✅ 관리자 전용 페이지 접근 제한
 - ✅ 일반 사용자 기능 차단 (장바구니, 마이페이지)
 - ✅ URL 직접 접속 차단
+
+### 🤖 AI 서비스 기능
+
+#### 🧠 **추천 에이전트 (`recommend_agent.py`)**
+- ✅ 감정, 장르, 키워드 기반 도서 추천
+- ✅ MMR(Maximum Marginal Relevance) 기반 다양성 검색
+- ✅ 벡터 데이터베이스 활용한 유사도 검색
+
+#### 📚 **위키 검색 에이전트 (`wiki_search_agent.py`)**
+- ✅ 작가 정보 검색 및 제공
+- ✅ 도서 관련 정보 검색
+- ✅ 구조화된 응답 생성
+
+#### 🎯 **메인 에이전트 (`main_agent.py`)**
+- ✅ 사용자 의도 분류 (`intent_classify_chain.py`)
+- ✅ 쿼리 분석 (`query_analysis_chain.py`)
+- ✅ 세션 관리 및 대화 히스토리 추적
+- ✅ 에이전트 라우팅 (`intent_router.py`)
 
 ## 🌐 API 명세서
 
@@ -187,6 +231,13 @@ Spring Boot를 활용한 온라인 서점 시스템으로, 사용자와 관리�
 | POST | `/cart/delete` | 상품 삭제 | `isbn` | String |
 | GET | `/cart/list` | 장바구니 목록 | - | `List<CartItemResponse>` |
 | GET | `/product/api/stock/{isbn}` | 재고 확인 | `isbn` | `Map<String, Integer>` |
+
+### 🤖 **AI 채팅 API**
+| Method | Endpoint | Description | Request Body | Response |
+|--------|----------|-------------|--------------|----------|
+| POST | `/api/chat/message` | 채팅 메시지 전송 | `{"message": "사용자 메시지"}` | `Map<String, Object>` |
+| GET | `/health` | AI 서비스 상태 확인 | - | `{"status": "healthy"}` |
+| POST | `/api/chat` | AI 챗봇 대화 (FastAPI) | `ChatRequest` | `{"response": "AI 응답", "success": true}` |
 
 ### 💳 **주문/결제 API**
 | Method | Endpoint | Description | Request Body | Response |
@@ -243,50 +294,97 @@ Spring Boot를 활용한 온라인 서점 시스템으로, 사용자와 관리�
 
 ### 사전 요구사항
 - **Java 17** 이상
+- **Python 3.11** 이상
 - **Maven 3.6** 이상
 - **MySQL 8.0** 이상
+- **Docker & Docker Compose** (선택사항)
 - **Git**
+- **OpenAI API Key** (AI 기능 사용시 필수)
 
 ### 1. 프로젝트 클론
 ```bash
-git clone https://github.com/your-username/springboot-bookstore.git
-cd springboot-bookstore
+git clone https://github.com/your-username/KDT_BE12_Toy_Project4.git
+cd KDT_BE12_Toy_Project4
 ```
 
 ### 2. 데이터베이스 설정
-MySQL에서 새 데이터베이스 생성:
+
+#### AWS RDS 사용 (현재 프로젝트 방식)
+1. AWS RDS MySQL 인스턴스 생성
+2. 보안 그룹에서 3306 포트 열기
+3. `application.properties`에 RDS 엔드포인트 설정
+
+#### 로컬 MySQL 사용 (개발용)
 ```sql
-CREATE DATABASE bookstore_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE tp4team5 CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER 'bookstore_user'@'localhost' IDENTIFIED BY 'your_password';
-GRANT ALL PRIVILEGES ON bookstore_db.* TO 'bookstore_user'@'localhost';
+GRANT ALL PRIVILEGES ON tp4team5.* TO 'bookstore_user'@'localhost';
 FLUSH PRIVILEGES;
+```
+
+#### Docker MySQL 사용
+```bash
+docker run --name mysql-bookstore \
+  -e MYSQL_ROOT_PASSWORD=rootpassword \
+  -e MYSQL_DATABASE=tp4team5 \
+  -e MYSQL_USER=bookstore_user \
+  -e MYSQL_PASSWORD=your_password \
+  -p 3306:3306 -d mysql:8.0
 ```
 
 ### 3. 애플리케이션 설정 파일 생성
 `src/main/resources/application.properties` 파일을 생성하고 다음 내용을 입력하세요:
 
 ```properties
-# 데이터베이스 설정
-spring.datasource.url=jdbc:mysql://localhost:3306/bookstore_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-spring.datasource.username=bookstore_user
-spring.datasource.password=your_database_password
-spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+# 애플리케이션 이름
+spring.application.name=KDT_BE12_Toy_Project4
+
+# 데이터베이스 설정 (AWS RDS)
+spring.datasource.url=jdbc:mysql://your-rds-endpoint:3306/your_database?serverTimezone=Asia/Seoul
+spring.datasource.username=your_db_username
+spring.datasource.password=your_db_password
+
+# 데이터베이스 연결 풀 설정 (HikariCP)
+spring.datasource.hikari.maximum-pool-size=5
+spring.datasource.hikari.minimum-idle=2
+spring.datasource.hikari.connection-timeout=20000
+spring.datasource.hikari.idle-timeout=300000
+spring.datasource.hikari.max-lifetime=1200000
+spring.datasource.hikari.leak-detection-threshold=60000
+
+# UTF-8 인코딩 설정 (강화)
+server.servlet.encoding.charset=UTF-8
+server.servlet.encoding.enabled=true
+server.servlet.encoding.force=true
+server.servlet.encoding.force-request=true
+server.servlet.encoding.force-response=true
+
+# Thymeleaf 설정
+spring.thymeleaf.encoding=UTF-8
+spring.thymeleaf.mode=HTML
+spring.thymeleaf.cache=false
+spring.thymeleaf.servlet.content-type=text/html; charset=UTF-8
+
+# HTTP 메시지 컨버터 인코딩
+spring.http.encoding.charset=UTF-8
+spring.http.encoding.enabled=true
+spring.http.encoding.force=true
+
+# 추가 인코딩 설정
+spring.messages.encoding=UTF-8
+spring.banner.charset=UTF-8
 
 # JPA 설정
 spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
 spring.jpa.properties.hibernate.format_sql=true
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
-spring.jpa.properties.hibernate.jdbc.time_zone=Asia/Seoul
-
-# 로깅 설정
-logging.level.org.springframework.web=DEBUG
-logging.level.org.hibernate.SQL=DEBUG
-logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE
-
-# 파일 업로드 설정
-spring.servlet.multipart.max-file-size=10MB
-spring.servlet.multipart.max-request-size=10MB
+logging.level.org.hibernate.SQL=debug
+logging.level.org.hibernate.type.descriptor.sql=trace
+logging.level.org.hibernate.orm.jdbc.bind=trace
+logging.level.org.hibernate.orm.jdbc=trace
+logging.level.org.hibernate=debug
+logging.level.org.hibernate.type=trace
 
 # 이메일 설정 (Gmail SMTP)
 spring.mail.host=smtp.gmail.com
@@ -295,39 +393,228 @@ spring.mail.username=your_email@gmail.com
 spring.mail.password=your_app_password
 spring.mail.properties.mail.smtp.auth=true
 spring.mail.properties.mail.smtp.starttls.enable=true
-spring.mail.properties.mail.smtp.starttls.required=true
+spring.mail.default-encoding=UTF-8
+
+# 발신자 정보
+mail.sender.email=your_email@gmail.com
+mail.sender.name=책크인 관리자
 
 # KakaoPay 설정
 kakaopay.admin-key=your_kakaopay_admin_key
-kakaopay.cid=your_cid
-kakaopay.ready-url=https://kapi.kakao.com/v1/payment/ready
-kakaopay.approve-url=https://kapi.kakao.com/v1/payment/approve
-kakaopay.cancel-url=https://kapi.kakao.com/v1/payment/cancel
-kakaopay.fail-url=https://kapi.kakao.com/v1/payment/fail
+kakaopay.cid=TC0ONETIME
 
-# 서버 설정
-server.port=8080
-server.servlet.context-path=/
-server.servlet.encoding.charset=UTF-8
-server.servlet.encoding.enabled=true
-server.servlet.encoding.force=true
+# AI 서비스 설정 (토글 가능)
+ai.service.enabled=true
+ai.service.base-url=http://localhost:8000
+ai.service.timeout=30000
+ai.service.fallback-to-java=true
 
-# Thymeleaf 설정
-spring.thymeleaf.cache=false
-spring.thymeleaf.prefix=classpath:/templates/
-spring.thymeleaf.suffix=.html
+# OpenAI API 키 (Java에서 직접 사용)
+openai.api.key=${OPENAI_API_KEY:}
+openai.api.url=https://api.openai.com/v1/chat/completions
+openai.model=gpt-3.5-turbo
+openai.max-tokens=1000
+openai.temperature=0.7
 ```
 
-### 4. 애플리케이션 실행
+**⚠️ 중요 설정 안내:**
+
+### 데이터베이스 설정
+- **AWS RDS**: 실제 프로젝트는 AWS RDS MySQL을 사용
+- **로컬 개발**: MySQL 로컬 설치 또는 Docker MySQL 컨테이너 사용
+
+### AI 서비스 URL 설정
+| 환경 | AI 서비스 URL | 설명 |
+|------|------------|------|
+| 로컬 개발 | `http://localhost:8000` | 개별 실행 시 |
+| Docker Compose | `http://ai-service:8000` | 컨테이너 내부 통신 |
+| AWS/원격 | `http://your-domain:8000` | 원격 서버 주소 |
+
+### 환경변수 설정 필수
 ```bash
+# 환경변수로 설정
+export OPENAI_API_KEY=your_openai_api_key_here
+
+# 또는 application.properties에 직접 입력
+openai.api.key=your_openai_api_key_here
+```
+
+### 4. AI 서비스 설정 (Python)
+`ai-service` 디렉토리로 이동하여 Python 환경 설정:
+```bash
+cd ai-service
+python -m venv ai_venv
+# Windows
+ai_venv\Scripts\activate
+# Linux/Mac
+source ai_venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+### 5. AI 서비스 환경 변수 설정
+`ai-service/.env` 파일 생성:
+```env
+# OpenAI API 설정
+OPENAI_API_KEY=your_openai_api_key_here
+
+# 벡터 데이터베이스 설정
+CHROMA_DB_PATH=./data/chroma_db
+COLLECTION_NAME=bookstore_collection
+
+# 서비스 설정
+FAST_API_HOST=0.0.0.0
+FAST_API_PORT=8000
+```
+
+### 6. 벡터 데이터베이스 (ChromaDB) 설정
+
+#### 초기 벡터DB 생성
+```bash
+cd ai-service
+# 벡터DB 디렉토리 생성
+mkdir -p data/chroma_db
+
+# 벡터DB 상태 확인
+python data/prompts/check_vector_db.py
+```
+
+#### 도서 데이터 임베딩 (선택사항)
+```bash
+# 전처리된 도서 데이터가 있는 경우
+cd data/prompts/preprocessing
+python product_extract.py  # 도서 정보 추출
+python emotion_extract.py  # 감정 키워드 추출
+python generate_reviews.py # 리뷰 데이터 생성
+```
+
+### 7. Docker 설정 (권장 방법)
+
+#### Docker Compose 환경변수 설정
+프로젝트 루트에 `.env` 파일 생성:
+```env
+# MySQL 설정
+MYSQL_ROOT_PASSWORD=rootpassword
+MYSQL_DATABASE=bookstore_db
+MYSQL_USER=bookstore_user
+MYSQL_PASSWORD=your_database_password
+
+# AI 서비스 설정
+OPENAI_API_KEY=your_openai_api_key_here
+AI_SERVICE_BASE_URL=http://ai-service:8000
+```
+
+#### Docker Compose 실행
+```bash
+# 모든 서비스 시작
+docker-compose up -d
+
+# 로그 확인
+docker-compose logs -f
+
+# 특정 서비스 로그 확인
+docker-compose logs ai-service
+docker-compose logs spring-app
+
+# 서비스 중지
+docker-compose down
+```
+
+#### Docker 개별 빌드 (필요시)
+```bash
+# AI 서비스 빌드
+cd ai-service
+docker build -t bookstore-ai .
+
+# Spring Boot 앱 빌드
+docker build -t bookstore-app .
+```
+
+### 8. 애플리케이션 실행
+
+#### 방법 1: Docker Compose 사용 (권장)
+```bash
+# 전체 시스템 시작
+docker-compose up -d
+
+# 상태 확인
+docker-compose ps
+```
+
+#### 방법 2: 개별 실행
+**1단계: MySQL 시작 (로컬 설치 또는 Docker)**
+```bash
+# Docker로 MySQL만 실행
+docker run --name mysql-bookstore \
+  -e MYSQL_ROOT_PASSWORD=rootpassword \
+  -e MYSQL_DATABASE=bookstore_db \
+  -e MYSQL_USER=bookstore_user \
+  -e MYSQL_PASSWORD=your_password \
+  -p 3306:3306 -d mysql:8.0
+```
+
+**2단계: AI 서비스 시작**
+```bash
+cd ai-service
+# 가상환경 활성화
+ai_venv\Scripts\activate  # Windows
+# source ai_venv/bin/activate  # Linux/Mac
+
+# 서비스 시작
+python main.py
+```
+
+**3단계: Spring Boot 서버 시작**
+```bash
+# 별도 터미널에서
 mvn clean install
 mvn spring-boot:run
+
+# 또는 IDE에서 AIToyProjectApplication.java 실행
 ```
 
-또는 IDE에서 `SpringbootAssignmentApplication.java` 실행
+#### 방법 3: 스크립트 사용
+```bash
+# Windows
+scripts\start.bat
 
-### 5. 접속 확인
-브라우저에서 `http://localhost:8080` 접속
+# Linux/Mac
+chmod +x scripts/start.sh
+./scripts/start.sh
+```
+
+### 9. 접속 확인 및 테스트
+
+#### 서비스 접속
+- **메인 웹사이트**: `http://localhost:8080`
+- **AI 서비스**: `http://localhost:8000`
+- **AI 서비스 헬스체크**: `http://localhost:8000/health`
+
+#### AI 챗봇 테스트
+```bash
+# AI 서비스 직접 테스트
+curl -X POST "http://localhost:8000/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "우울할 때 읽을 책 추천해줘"}'
+```
+
+#### 벡터DB 상태 확인
+```bash
+cd ai-service
+python data/prompts/check_vector_db.py
+```
+
+#### Docker 컨테이너 상태 확인
+```bash
+# 컨테이너 상태
+docker-compose ps
+
+# 네트워크 확인
+docker network ls | grep bookstore
+
+# 볼륨 확인
+docker volume ls | grep bookstore
+```
 
 ## 🗄 데이터베이스 설정
 
@@ -373,7 +660,7 @@ INSERT INTO payment_method (payment_method_id, payment_method_name, is_active) V
 
 ### 데이터베이스 백업/복원
 프로젝트에는 데이터베이스 구조와 샘플 데이터를 포함한 SQL 파일이 제공됩니다:
-- `database/full_export.sql` - 테이블 구조 및 샘플 데이터
+- `RDB/full_export.sql` - 테이블 구조 및 샘플 데이터
 
 #### 데이터베이스 복원 방법
 ```bash
@@ -462,21 +749,46 @@ Failed to send email
 
 ## 📂 프로젝트 구조
 ```
-src/
-├── main/
-│   ├── java/bookstore_ai_project/
-│   │   ├── config/          # 설정 클래스
-│   │   ├── controller/      # 컨트롤러 클래스
-│   │   ├── dto/             # 데이터 전송 객체
-│   │   ├── entity/          # JPA 엔티티
-│   │   ├── repository/      # 데이터 액세스 레이어
-│   │   ├── service/         # 비즈니스 로직
-│   │   └── scheduler/       # 스케줄러 (휴면계정 관리)
-│   └── resources/
-│       ├── static/          # 정적 자원 (CSS, JS, Images)
-│       ├── templates/       # Thymeleaf 템플릿
-│       └── application.properties
-└── test/                    # 테스트 코드
+KDT_BE12_Toy_Project4/
+├── src/main/java/bookstore_ai_project/       # Spring Boot 메인 애플리케이션
+│   ├── config/                               # 설정 클래스 (SecurityConfig, WebConfig)
+│   ├── controller/                           # 컨트롤러 (AIChatController, ProductController 등)
+│   ├── dto/                                  # 데이터 전송 객체
+│   ├── entity/                               # JPA 엔티티
+│   ├── repository/                           # 데이터 액세스 레이어
+│   ├── service/                              # 비즈니스 로직 (AIChatService 등)
+│   └── scheduler/                            # 스케줄러 (DormantCheckScheduler)
+├── ai-service/                               # Python AI 서비스
+│   ├── app/
+│   │   ├── agents/
+│   │   │   ├── recommend_agent.py            # 도서 추천 에이전트
+│   │   │   └── wiki_search_agent.py          # 위키 검색 에이전트
+│   │   ├── chains/
+│   │   │   ├── intent_classify_chain.py      # 의도 분류 체인
+│   │   │   ├── query_analysis_chain.py       # 쿼리 분석 체인
+│   │   │   ├── clarification_chain.py        # 명확화 체인
+│   │   │   └── wiki_search_chain.py          # 위키 검색 체인
+│   │   ├── main_agent/
+│   │   │   ├── main_agent.py                 # 메인 에이전트
+│   │   │   └── intent_router.py              # 의도 라우터
+│   │   ├── config/
+│   │   │   └── llm.py                        # LLM 설정
+│   │   ├── prompts/                          # 프롬프트 템플릿
+│   │   ├── utils/                            # 유틸리티 함수
+│   │   └── models/                           # 데이터 모델
+│   ├── data/
+│   │   ├── chroma_db/                        # 벡터 데이터베이스
+│   │   └── prompts/
+│   │       ├── search_engine.py              # 하이브리드 검색 엔진
+│   │       └── preprocessing/                # 데이터 전처리 스크립트
+│   ├── main.py                               # FastAPI 서버
+│   └── requirements.txt                      # Python 의존성
+├── scripts/                                  # 운영 스크립트
+│   ├── start.bat, start.sh                   # 서비스 시작 스크립트
+│   ├── stop.bat, stop.sh                     # 서비스 중지 스크립트
+│   └── chromadb_reset.bat                    # 벡터DB 초기화
+├── docker-compose.yml                        # Docker Compose 설정
+└── README.md, TROUBLESHOOTING.md             # 문서
 ```
 
 ## 🔧 성능 최적화
@@ -490,6 +802,13 @@ src/
 - 지연 로딩 (Lazy Loading) 전략
 - 복합키 인덱스 활용
 - 쿼리 최적화 (N+1 문제 해결)
+
+### AI 서비스 최적화
+- **MMR 기반 다양성 검색** (`k=3, fetch_k=10, lambda_mult=0.7`)
+- **하이브리드 스코어링 시스템** (감정키워드 +4점, 제품키워드 +3점)
+- **벡터 임베딩 캐싱** (ChromaDB 영구 저장)
+- **세션 기반 대화 관리** (브라우저 종료까지 유지)
+- **클라이언트 사이드 캐싱** (30초 TTL)
 
 ## 🚀 배포 정보
 
@@ -505,20 +824,6 @@ src/
 - 로드 밸런싱 구성
 - 보안 강화 (비밀번호 암호화 등)
 
-## 📈 추가 개발 계획
-
-### 단기 계획
-- [ ] 비밀번호 암호화 (BCrypt)
-- [ ] Spring Security 적용
-- [ ] Redis 캐싱 시스템
-- [ ] 이미지 업로드 기능
-
-### 장기 계획
-- [ ] 쿠폰/할인 시스템
-- [ ] 추천 시스템 (협업 필터링)
-- [ ] 모바일 앱 API
-- [ ] 실시간 알림 시스템
-
 ## 🤝 기여하기
 1. Fork the Project
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
@@ -531,4 +836,4 @@ src/
 
 ---
 
-**YESorNO.24** - Spring Boot로 구현한 종합 온라인 서점 시스템
+**책크인** - Spring Boot로 구현한 종합 온라인 서점 시스템
