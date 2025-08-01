@@ -12,6 +12,7 @@ from tools.hybrid_tool import run_hybrid_tool
 # 환경 변수 불러오기
 load_dotenv()
 
+
 # 추천 실행 함수
 def run_recommend_agent(query_data: dict) -> str:
     emotion = query_data.get("emotion", "")
