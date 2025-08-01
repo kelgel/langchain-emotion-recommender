@@ -1,4 +1,4 @@
-# 🔧 YESorNO.24 트러블슈팅 가이드
+# 🔧 책크인 트러블슈팅 가이드
 
 프로젝트 개발 과정에서 발생한 주요 문제점들과 해결 방법을 정리한 문서입니다.
 
@@ -41,9 +41,9 @@ Could not create connection to database server. Attempted to reconnect 3 times. 
 
 3. `application.properties` 설정 확인:
    ```properties
-   spring.datasource.url=jdbc:mysql://localhost:3306/bookstore_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-   spring.datasource.username=bookstore_user
-   spring.datasource.password=your_password
+   spring.datasource.url=jdbc:mysql://your-rds-endpoint:3306/your_database?serverTimezone=Asia/Seoul
+   spring.datasource.username=your_db_username
+   spring.datasource.password=your_db_password
    ```
 
 ### 2. 문자 인코딩 문제
@@ -365,7 +365,7 @@ fetch('/api/cart/add', {
 
 **💡 해결방법:**
 ```javascript
-// 클라이언트 사이드 캐싱 구현
+// 클라이언트 사이드 캐싱 구현 (product_detail.js:315 참조)
 let stockCache = new Map();
 const CACHE_DURATION = 30000; // 30초
 
